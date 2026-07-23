@@ -39,38 +39,39 @@ int main(){
     printf("MOEDAS:\n");
 
     if(N>=1){
-        double One_Coin=N/1;
-        printf("%.2lf moeda(s) de R$ 1.00\n", One_Coin);
+        int One_Coin=N/1;
+        printf("%d moeda(s) de R$ 1.00\n", One_Coin);
         N = N-One_Coin*1;
     }else{printf("0 moeda(s) de R$ 1.00\n");}
 
     if(N>=.50){
-        double Half_Coin=N/.50;
-        printf("%.2lf moeda(s) de R$ 0.50\n", Half_Coin);
+        int Half_Coin=N/.50;
+        printf("%d moeda(s) de R$ 0.50\n", Half_Coin);
         N = N-Half_Coin*0.50;
     }else{printf("0 moeda(s) de R$ 0.50\n");}
 
     if(N>=0.25){
-        double Twenty_Five_Cent_Coin=N/0.25;
-        printf("%.2lf moeda(s) de R$ 0.25\n", Twenty_Five_Cent_Coin);
+        int Twenty_Five_Cent_Coin=N/0.25;
+        printf("%d moeda(s) de R$ 0.25\n", Twenty_Five_Cent_Coin);
         N = N-Twenty_Five_Cent_Coin*0.25;
     }else{printf("0 moeda(s) de R$ 0.25\n");}
 
     if(N>=.10){
-        double Ten_Cent_Coin=N/.1;
-        printf("%.2lf moeda(s) de R$ 0.10\n", Ten_Cent_Coin);
+        int Ten_Cent_Coin=N/.1;
+        printf("%d moeda(s) de R$ 0.10\n", Ten_Cent_Coin);
         N = N-Ten_Cent_Coin*1;
     }else{printf("0 moeda(s) de R$ 0.10\n");}
 
     if(N>=.05){
-        double Five_Cent_Coin=N/0.05;
-        printf("%.2lf moeda(s) de R$ 0.05\n", Five_Cent_Coin);
+        int Five_Cent_Coin=N/0.05;
+        printf("%d moeda(s) de R$ 0.05\n", Five_Cent_Coin);
         N = N-Five_Cent_Coin*.5;
     }else{printf("0 moeda(s) de R$ 0.05\n");}
 
+
     if(N>=.01){
-        double One_Cent_Coin=N/.01;
-        printf("%.2lf moeda(s) de R$ 0.01\n", One_Cent_Coin);
+        int One_Cent_Coin=N/.01;
+        printf("%d moeda(s) de R$ 0.01\n", One_Cent_Coin);
         N = N-One_Cent_Coin*.01;
     }else{printf("0 moeda(s) de R$ 0.01\n");}
 
