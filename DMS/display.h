@@ -1,0 +1,14 @@
+void print_line();
+void print_title(char title[]);
+void print_subtitle(char subtitle[]);
+void print_menu_header(char title[]);
+void print_menu_item(int number, char label[]);
+void print_table_product_header();
+void print_table_product_row(int id, char name[], int stock);
+void print_table_dealer_header();
+void print_table_dealer_row(int id, char name[]);
+void print_table_retailer_row(int id, char name[], int dealer_id);
+void print_table_footer();
+void print_success(char message[]);
+void print_error(char message[]);
+void print_order_summary(char product[], int quantity, char from[], char to[]);
