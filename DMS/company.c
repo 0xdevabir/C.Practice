@@ -39,6 +39,13 @@ void show_company_stock() {
 void company_menu() {
     int choice;
 
+    print_subtitle("Company Login");
+    if (!verify_password()) {
+        return;
+    }
+
+    print_success("Login successful.");
+
     do {
         print_menu_header("COMPANY PANEL");
         print_menu_item(1, "View All Dealers");

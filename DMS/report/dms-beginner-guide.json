@@ -1,0 +1,361 @@
+[
+  {"type": "h1", "text": "Welcome"},
+  {"type": "body", "text": "This guide teaches you the <b>Distribution Management System (DMS)</b> project from zero. You only need basic C: <b>printf</b>, <b>scanf</b>, <b>for</b> and <b>while</b> loops, simple <b>arrays</b>, and <b>if/else</b>. Everything else is explained here as we go."},
+  {"type": "callout", "text": "Think of DMS as a practice warehouse game in your terminal. Company holds big stock, dealers buy from company, shops (retailers) buy from dealers. You log in, view tables, and place orders."},
+  {"type": "h2", "text": "What you will learn"},
+  {"type": "bullet", "text": "What the project does in real life (supply chain)."},
+  {"type": "bullet", "text": "How to compile and run the program on your computer."},
+  {"type": "bullet", "text": "What every file does and how they connect."},
+  {"type": "bullet", "text": "New ideas: functions, multiple files, strings, 2D arrays, extern."},
+  {"type": "bullet", "text": "How ordering works step by step, with real numbers."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "1. The Big Picture"},
+  {"type": "h2", "text": "1.1 Real-world story"},
+  {"type": "body", "text": "A rice company keeps 100 bags in a central warehouse. A <b>dealer</b> in Dhaka orders 20 bags. A <b>shop</b> in Mirpur orders 5 bags from that dealer. Customers buy from the shop. DMS simulates this chain on your screen."},
+  {"type": "flowchart",
+    "nodes": [
+      {"id": "c", "label": "Company Warehouse", "shape": "rect"},
+      {"id": "d", "label": "Dealer", "shape": "rect"},
+      {"id": "r", "label": "Retailer Shop", "shape": "rect"},
+      {"id": "u", "label": "Customer", "shape": "oval"}
+    ],
+    "edges": [
+      {"from": "c", "to": "d", "label": "dealer orders"},
+      {"from": "d", "to": "r", "label": "shop orders"},
+      {"from": "r", "to": "u", "label": "sales"}
+    ],
+    "caption": "Products flow down the chain; orders go up"
+  },
+  {"type": "h2", "text": "1.2 Three user roles"},
+  {"type": "table",
+    "headers": ["Role", "Login", "Main actions"],
+    "rows": [
+      ["Company", "Password only", "View all dealers, products, warehouse stock"],
+      ["Dealer", "Dealer ID + password", "View own stock, order from company"],
+      ["Retailer", "Retailer ID + password", "View own stock, order from dealer"]
+    ],
+    "col_widths": [0.2, 0.28, 0.52],
+    "caption": "Who can do what"
+  },
+  {"type": "callout", "text": "Password for Company, Dealer, and Retailer login: 1122"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "2. Build and Run (Start Here)"},
+  {"type": "h2", "text": "2.1 Open terminal in project folder"},
+  {"type": "code", "language": "bash", "text": "cd /path/to/DMS"},
+  {"type": "h2", "text": "2.2 Compile all C files together"},
+  {"type": "body", "text": "C projects often split code into many <b>.c</b> files. GCC compiles each file and links them into one program called <b>dms</b>."},
+  {"type": "code", "language": "bash", "text": "gcc main.c data.c display.c company.c dealer.c retailer.c -o dms"},
+  {"type": "table",
+    "headers": ["Part", "Meaning"],
+    "rows": [
+      ["gcc", "The C compiler"],
+      ["main.c ... retailer.c", "Six source files — all required"],
+      ["-o dms", "Output executable named dms"]
+    ],
+    "col_widths": [0.35, 0.65],
+    "caption": "Compile command explained"
+  },
+  {"type": "h2", "text": "2.3 Run the program"},
+  {"type": "code", "language": "bash", "text": "./dms"},
+  {"type": "h2", "text": "2.4 Quick test session"},
+  {"type": "numbered", "text": "Main menu: choose 2 (Dealer Login)."},
+  {"type": "numbered", "text": "Enter Dealer ID: 1 (Dhaka Dealer)."},
+  {"type": "numbered", "text": "Password: 1122."},
+  {"type": "numbered", "text": "Choose 3 (Order From Company), Product ID 1, Quantity 10."},
+  {"type": "numbered", "text": "Choose 0 to logout, then 0 again to exit."},
+  {"type": "callout", "text": "If gcc is missing on Mac: run xcode-select --install"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "3. Project Files"},
+  {"type": "body", "text": "Like chapters in a book — each file has one job. Together they form one program."},
+  {"type": "table",
+    "headers": ["File", "Job"],
+    "rows": [
+      ["main.c", "Starts program, shows main menu"],
+      ["data.c / data.h", "All products, dealers, retailers, stock data"],
+      ["display.c / display.h", "Menus, tables, password, success/error messages"],
+      ["company.c", "Company panel after login"],
+      ["dealer.c", "Dealer panel and ordering from company"],
+      ["retailer.c", "Retailer panel and ordering from dealer"]
+    ],
+    "col_widths": [0.32, 0.68],
+    "caption": "File map"
+  },
+  {"type": "h2", "text": "3.1 How files talk to each other"},
+  {"type": "body", "text": "A <b>header file (.h)</b> lists what exists (function names, variables). A <b>source file (.c)</b> contains the real code. <b>#include \"data.h\"</b> at the top of a file means: use the shared data declared in data.h."},
+  {"type": "code", "language": "c", "text": "#include \"data.h\"   /* I need product lists and stock arrays */\n#include \"display.h\" /* I need print_menu_item, print_error, etc. */"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "4. C Basics You Already Know"},
+  {"type": "body", "text": "Before new ideas, here is how familiar syntax appears in DMS."},
+  {"type": "h2", "text": "4.1 printf — show text"},
+  {"type": "code", "language": "c", "text": "printf(\"Enter your choice: \");  /* no newline at end */\nprintf(\"Welcome, %s\\n\", dealer_name[dealer_index]);  /* %s = string */"},
+  {"type": "h2", "text": "4.2 scanf — read input"},
+  {"type": "code", "language": "c", "text": "scanf(\"%d\", &choice);     /* read integer into choice */\nscanf(\"%s\", password);    /* read word into char array */"},
+  {"type": "h2", "text": "4.3 for loop — walk through a list"},
+  {"type": "code", "language": "c", "text": "for (i = 0; i < dealer_total; i++) {\n    print_table_dealer_row(dealer_id[i], dealer_name[i]);\n}"},
+  {"type": "h2", "text": "4.4 do-while — menu until user exits"},
+  {"type": "code", "language": "c", "text": "do {\n    /* show menu */\n    scanf(\"%d\", &choice);\n    if (choice == 1) list_dealers();\n} while (choice != 0);  /* 0 = back or exit */"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "5. New Ideas in This Project"},
+  {"type": "h2", "text": "5.1 Functions"},
+  {"type": "body", "text": "A <b>function</b> is a named block of code you can call. <b>void</b> means it returns nothing. <b>int</b> means it returns a number (like 1 for true, 0 for false)."},
+  {"type": "code", "language": "c", "text": "void list_dealers() {   /* does work, returns nothing */\n    /* ... */\n}\n\nint verify_password() {  /* returns 1 if OK, 0 if wrong */\n    /* ... */\n    return 1;\n}"},
+  {"type": "h2", "text": "5.2 char arrays = strings"},
+  {"type": "body", "text": "In C there is no separate string type. Text lives in <b>char name[50]</b> — up to 49 letters plus end marker. Use <b>strcpy</b> to copy text and <b>strcmp</b> to compare."},
+  {"type": "code", "language": "c", "text": "strcpy(product_name[0], \"Rice\");\nif (strcmp(password, \"1122\") == 0) {  /* 0 means equal */\n    return 1;\n}"},
+  {"type": "h2", "text": "5.3 2D arrays — stock grid"},
+  {"type": "body", "text": "<b>dealer_stock[dealer][product]</b> is a table: row = which dealer, column = which product. Example: dealer_stock[0][0] = Dhaka Dealer's Rice count."},
+  {"type": "table",
+    "headers": ["Index", "Meaning", "Start value"],
+    "rows": [
+      ["dealer_stock[0][0]", "Dhaka Dealer — Rice", "20"],
+      ["dealer_stock[0][1]", "Dhaka Dealer — Oil", "15"],
+      ["dealer_stock[1][0]", "Chittagong Dealer — Rice", "25"]
+    ],
+    "col_widths": [0.35, 0.4, 0.25],
+    "caption": "2D array examples from init_data()"
+  },
+  {"type": "h2", "text": "5.4 extern — one copy of data for all files"},
+  {"type": "body", "text": "Arrays are <b>defined once</b> in data.c. data.h says <b>extern</b> so company.c, dealer.c, and retailer.c all use the <b>same</b> stock numbers. When a dealer orders, company stock changes everywhere immediately."},
+  {"type": "code", "language": "c", "text": "/* data.h */\nextern int company_stock[MAX_PRODUCTS];\n\n/* data.c */\nint company_stock[MAX_PRODUCTS];  /* the real memory */"},
+  {"type": "h2", "text": "5.5 break and return"},
+  {"type": "bullet", "text": "<b>break</b> — stop a for loop early when you found the right ID."},
+  {"type": "bullet", "text": "<b>return</b> — leave a function immediately (used after errors so bad orders don't run)."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "6. The Data Layer (data.c)"},
+  {"type": "h2", "text": "6.1 Sample data at startup"},
+  {"type": "body", "text": "<b>init_data()</b> fills the system before any menu appears. No file reading — everything is hard-coded for learning."},
+  {"type": "table",
+    "headers": ["Products", "Company stock"],
+    "rows": [
+      ["1 Rice", "100"],
+      ["2 Oil", "80"],
+      ["3 Sugar", "60"]
+    ],
+    "col_widths": [0.5, 0.5],
+    "caption": "Products"
+  },
+  {"type": "table",
+    "headers": ["Dealer ID", "Name"],
+    "rows": [
+      ["1", "Dhaka Dealer"],
+      ["2", "Chittagong Dealer"]
+    ],
+    "col_widths": [0.3, 0.7],
+    "caption": "Dealers"
+  },
+  {"type": "table",
+    "headers": ["Retailer ID", "Name", "Linked dealer"],
+    "rows": [
+      ["1", "Mirpur Shop", "Dealer 1"],
+      ["2", "Gulshan Shop", "Dealer 2"]
+    ],
+    "col_widths": [0.25, 0.45, 0.3],
+    "caption": "Retailers"
+  },
+  {"type": "table",
+    "headers": ["Product", "Company", "Dhaka", "Chittagong", "Mirpur", "Gulshan"],
+    "rows": [
+      ["Rice", "100", "20", "25", "5", "4"],
+      ["Oil", "80", "15", "12", "3", "6"],
+      ["Sugar", "60", "10", "18", "2", "1"]
+    ],
+    "col_widths": [0.14, 0.14, 0.14, 0.18, 0.14, 0.14],
+    "caption": "Full stock matrix at program start"
+  },
+  {"type": "chart",
+    "chart_type": "bar",
+    "labels": ["Rice", "Oil", "Sugar"],
+    "datasets": [
+      {"label": "Company", "values": [100, 80, 60]},
+      {"label": "All dealers", "values": [45, 27, 28]},
+      {"label": "All retailers", "values": [9, 9, 3]}
+    ],
+    "title": "Where stock sits at startup",
+    "y_label": "Units",
+    "caption": "Most units live at the company — like a real warehouse"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "7. main.c — Program Boss"},
+  {"type": "body", "text": "Every C program starts at <b>main()</b>. DMS loads data, then loops on the main menu until you choose Exit (0)."},
+  {"type": "code", "language": "c", "text": "int main() {\n    int choice;\n    init_data();\n\n    do {\n        print_menu_header(\"DISTRIBUTION MANAGEMENT SYSTEM\");\n        print_menu_item(1, \"Company Login\");\n        print_menu_item(2, \"Dealer Login\");\n        print_menu_item(3, \"Retailer Login\");\n        print_menu_item(0, \"Exit\");\n        printf(\"\\nEnter your choice: \");\n        scanf(\"%d\", &choice);\n\n        if (choice == 1)      company_menu();\n        else if (choice == 2) dealer_menu();\n        else if (choice == 3) retailer_menu();\n        else if (choice != 0)\n            print_error(\"Invalid choice. Please try again.\");\n    } while (choice != 0);\n\n    return 0;\n}"},
+  {"type": "flowchart",
+    "nodes": [
+      {"id": "start", "label": "Start", "shape": "oval"},
+      {"id": "init", "label": "init_data()", "shape": "rect"},
+      {"id": "menu", "label": "Show main menu", "shape": "rect"},
+      {"id": "pick", "label": "User choice?", "shape": "diamond"},
+      {"id": "co", "label": "company_menu", "shape": "rect"},
+      {"id": "de", "label": "dealer_menu", "shape": "rect"},
+      {"id": "re", "label": "retailer_menu", "shape": "rect"},
+      {"id": "end", "label": "Goodbye", "shape": "oval"}
+    ],
+    "edges": [
+      {"from": "start", "to": "init"},
+      {"from": "init", "to": "menu"},
+      {"from": "menu", "to": "pick"},
+      {"from": "pick", "to": "co", "label": "1"},
+      {"from": "pick", "to": "de", "label": "2"},
+      {"from": "pick", "to": "re", "label": "3"},
+      {"from": "pick", "to": "end", "label": "0"},
+      {"from": "co", "to": "menu"},
+      {"from": "de", "to": "menu"},
+      {"from": "re", "to": "menu"}
+    ],
+    "caption": "Main program flow"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "8. display.c — Screens and Tables"},
+  {"type": "body", "text": "All pretty printing lives here. Other files call these helpers so menus look the same everywhere."},
+  {"type": "bullet", "text": "<b>print_menu_header / print_menu_item</b> — boxed menus."},
+  {"type": "bullet", "text": "<b>print_table_product_row</b> — one line of a stock table."},
+  {"type": "bullet", "text": "<b>verify_password()</b> — compares input to 1122."},
+  {"type": "bullet", "text": "<b>print_error / print_success</b> — user feedback."},
+  {"type": "bullet", "text": "<b>print_order_summary</b> — after a successful order."},
+  {"type": "code", "language": "c", "text": "void print_table_product_row(int id, char name[], int stock) {\n    printf(\"| %-4d | %-20s | %-10d |\\n\", id, name, stock);\n}\n/* %-20s pads name to 20 chars so columns align */"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "9. company.c — Company Panel"},
+  {"type": "body", "text": "Company logs in with password only. It <b>views</b> data — no ordering in this version."},
+  {"type": "table",
+    "headers": ["Menu", "Action"],
+    "rows": [
+      ["1", "List all dealers"],
+      ["2", "List all products"],
+      ["3", "Show company warehouse stock"],
+      ["0", "Back to main menu"]
+    ],
+    "col_widths": [0.2, 0.8],
+    "caption": "Company menu"
+  },
+  {"type": "body", "text": "<b>list_dealers()</b> uses a for loop — same pattern you already know:"},
+  {"type": "code", "language": "c", "text": "for (i = 0; i < dealer_total; i++) {\n    print_table_dealer_row(dealer_id[i], dealer_name[i]);\n}"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "10. dealer.c — Dealer Panel"},
+  {"type": "h2", "text": "10.1 Login"},
+  {"type": "numbered", "text": "Show dealer table."},
+  {"type": "numbered", "text": "User enters Dealer ID."},
+  {"type": "numbered", "text": "Loop searches dealer_id[] to find matching index."},
+  {"type": "numbered", "text": "Password 1122, then dealer menu opens."},
+  {"type": "h2", "text": "10.2 The found pattern (used everywhere)"},
+  {"type": "code", "language": "c", "text": "found = 0;\nfor (i = 0; i < product_total; i++) {\n    if (product_id[i] == product_id_input) {\n        found = 1;\n        product_index = i;\n        break;\n    }\n}\nif (found == 0) {\n    print_error(\"Product not found.\");\n    return;\n}"},
+  {"type": "h2", "text": "10.3 Ordering from company"},
+  {"type": "body", "text": "Three checks before stock moves: product exists, quantity > 0, company has enough stock. Then two lines of math:"},
+  {"type": "code", "language": "c", "text": "company_stock[product_index] -= quantity;\ndealer_stock[dealer_index][product_index] += quantity;"},
+  {"type": "callout", "text": "Example: Company Rice 100 → 90, Dhaka Dealer Rice 20 → 30 after ordering 10 units."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "11. retailer.c — Shop Panel"},
+  {"type": "body", "text": "Same ideas as dealer, but retailers order from their <b>linked dealer</b> (retailer_dealer[]). Stock moves from dealer_stock down to retailer_stock."},
+  {"type": "table",
+    "headers": ["Retailer", "Buys from"],
+    "rows": [
+      ["Mirpur Shop (ID 1)", "Dhaka Dealer"],
+      ["Gulshan Shop (ID 2)", "Chittagong Dealer"]
+    ],
+    "col_widths": [0.45, 0.55],
+    "caption": "Retailer–dealer links"
+  },
+  {"type": "code", "language": "c", "text": "dealer_stock[dealer_index][product_index] -= quantity;\nretailer_stock[retailer_index][product_index] += quantity;"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "12. Full Story With Numbers"},
+  {"type": "body", "text": "Follow one product (Rice) through two orders."},
+  {"type": "h2", "text": "Step A — Dealer orders 10 Rice from company"},
+  {"type": "table",
+    "headers": ["Location", "Before", "After"],
+    "rows": [
+      ["Company Rice", "100", "90"],
+      ["Dhaka Dealer Rice", "20", "30"]
+    ],
+    "col_widths": [0.4, 0.3, 0.3],
+    "caption": "After dealer order"
+  },
+  {"type": "h2", "text": "Step B — Mirpur Shop orders 5 Rice from dealer"},
+  {"type": "table",
+    "headers": ["Location", "Before", "After"],
+    "rows": [
+      ["Dhaka Dealer Rice", "30", "25"],
+      ["Mirpur Shop Rice", "5", "10"]
+    ],
+    "col_widths": [0.4, 0.3, 0.3],
+    "caption": "After retailer order"
+  },
+  {"type": "flowchart",
+    "nodes": [
+      {"id": "s", "label": "Start order", "shape": "oval"},
+      {"id": "in", "label": "Read ID + quantity", "shape": "parallelogram"},
+      {"id": "d1", "label": "Valid product?", "shape": "diamond"},
+      {"id": "d2", "label": "Qty OK & enough stock?", "shape": "diamond"},
+      {"id": "t", "label": "Transfer stock", "shape": "rect"},
+      {"id": "e", "label": "Show result", "shape": "oval"}
+    ],
+    "edges": [
+      {"from": "s", "to": "in"},
+      {"from": "in", "to": "d1"},
+      {"from": "d1", "to": "d2", "label": "yes"},
+      {"from": "d1", "to": "e", "label": "no"},
+      {"from": "d2", "to": "t", "label": "yes"},
+      {"from": "d2", "to": "e", "label": "no"},
+      {"from": "t", "to": "e"}
+    ],
+    "caption": "Every order follows this validation chain"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "13. Common Mistakes"},
+  {"type": "table",
+    "headers": ["Problem", "Fix"],
+    "rows": [
+      ["Compile error / missing symbols", "Include ALL six .c files in gcc command"],
+      ["Wrong password", "Use 1122"],
+      ["Dealer not found", "Use ID 1 or 2 from the table"],
+      ["Not enough stock", "Order a smaller quantity"],
+      ["Product not found", "Use product ID 1, 2, or 3"]
+    ],
+    "col_widths": [0.45, 0.55],
+    "caption": "Troubleshooting"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "14. Practice Exercises"},
+  {"type": "h2", "text": "Easy"},
+  {"type": "bullet", "text": "Change the password in display.c and test login."},
+  {"type": "bullet", "text": "Add a 4th product in init_data() (e.g. Salt)."},
+  {"type": "h2", "text": "Medium"},
+  {"type": "bullet", "text": "Add menu option: dealer sees total units across all products."},
+  {"type": "bullet", "text": "Print which dealer a retailer is linked to on login."},
+  {"type": "h2", "text": "Hard"},
+  {"type": "bullet", "text": "Save stock to a file on exit and load on start (needs file I/O)."},
+  {"type": "bullet", "text": "Reject orders that would leave seller with zero stock of everything."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "15. Glossary"},
+  {"type": "table",
+    "headers": ["Word", "Simple meaning"],
+    "rows": [
+      ["DMS", "Distribution Management System — this project"],
+      ["Compile", "Turn .c source into runnable program"],
+      ["Executable", "The dms file you run with ./dms"],
+      ["Header (.h)", "List of names other files can use"],
+      ["extern", "This variable lives in another .c file"],
+      ["2D array", "Grid: rows and columns like a spreadsheet"],
+      ["Stock", "How many units someone holds"],
+      ["Index", "Array position (starts at 0)"],
+      ["ID", "User-facing number (often 1, 2, 3...)"]
+    ],
+    "col_widths": [0.25, 0.75],
+    "caption": "Quick reference"
+  },
+  {"type": "h2", "text": "Cheat sheet"},
+  {"type": "code", "language": "bash", "text": "gcc main.c data.c display.c company.c dealer.c retailer.c -o dms\n./dms\nPassword: 1122\nDealer IDs: 1, 2  |  Retailer IDs: 1, 2  |  Product IDs: 1, 2, 3"},
+  {"type": "callout", "text": "You now know how DMS works from compile command to stock transfer. Open each .c file and match what you read here to the real code line by line."}
+]

@@ -116,6 +116,10 @@ void retailer_menu() {
         }
     }
 
+    if (!verify_password()) {
+        return;
+    }
+
     print_success("Login successful.");
 
     do {
@@ -140,3 +144,4 @@ void retailer_menu() {
         }
     } while (choice != 0);
 }
+

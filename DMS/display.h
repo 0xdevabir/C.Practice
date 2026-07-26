@@ -12,3 +12,5 @@ void print_table_footer();
 void print_success(char message[]);
 void print_error(char message[]);
 void print_order_summary(char product[], int quantity, char from[], char to[]);
+int verify_password();
+

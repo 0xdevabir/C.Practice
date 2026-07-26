@@ -1,0 +1,149 @@
+[
+  {"type": "h1", "text": "Team 3 — Dealer + Retailer"},
+  {"type": "body", "text": "You build <b>dealer.c</b>, <b>dealer.h</b>, <b>retailer.c</b>, and <b>retailer.h</b>. This is the <b>ordering logic</b>: stock moves from company → dealer → retailer. hardest part of DMS."},
+  {"type": "callout", "text": "Your deliverable: login by ID, view stock, place orders with validation, transfer stock between levels."},
+  {"type": "table",
+    "headers": ["Team", "Files", "Role"],
+    "rows": [
+      ["Team 1", "data.c, data.h, display.c, display.h", "Arrays + UI (YOU depend on this)"],
+      ["Team 2", "main.c, company.c, company.h", "Calls your dealer_menu() and retailer_menu()"],
+      ["Team 3 (YOU)", "dealer.c, dealer.h, retailer.c, retailer.h", "Dealer + Retailer panels + orders"]
+    ],
+    "col_widths": [0.18, 0.42, 0.4],
+    "caption": "Three-team split"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "1. What You Are Building"},
+  {"type": "h2", "text": "1.1 dealer.c"},
+  {"type": "bullet", "text": "Dealer login by ID (search dealer_id array)."},
+  {"type": "bullet", "text": "View own stock, view company products."},
+  {"type": "bullet", "text": "<b>order_from_company()</b> — validate and transfer stock."},
+  {"type": "h2", "text": "1.2 retailer.c"},
+  {"type": "bullet", "text": "Retailer login by ID; show linked dealer."},
+  {"type": "bullet", "text": "View own stock, view dealer products."},
+  {"type": "bullet", "text": "<b>order_from_dealer()</b> — same validation pattern, different arrays."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "2. What You Need From Teammates"},
+  {"type": "table",
+    "headers": ["From Team 1", "Use for"],
+    "rows": [
+      ["company_stock[], dealer_stock[], retailer_stock[]", "Order transfers"],
+      ["product_id[], product_name[], product_total", "Search products"],
+      ["dealer_id[], dealer_name[], dealer_total", "Dealer login"],
+      ["retailer_id[], retailer_dealer[]", "Retailer login + link"],
+      ["show_company_products()", "Before dealer order"],
+      ["show_dealer_products(i)", "Before retailer order"],
+      ["verify_password(), print_order_summary()", "Login + success screen"]
+    ],
+    "col_widths": [0.45, 0.55],
+    "caption": "Team 1 dependencies"
+  },
+  {"type": "body", "text": "Team 2's main.c will call <b>dealer_menu()</b> and <b>retailer_menu()</b> — deliver dealer.h and retailer.h early so they can compile."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "3. Build Order"},
+  {"type": "numbered", "text": "dealer.h / retailer.h — one function each."},
+  {"type": "numbered", "text": "dealer.c — show_dealer_stock(), then order_from_company(), then dealer_menu()."},
+  {"type": "numbered", "text": "Test dealer alone with mini main."},
+  {"type": "numbered", "text": "retailer.c — show_retailer_stock(), order_from_dealer(), retailer_menu()."},
+  {"type": "numbered", "text": "Full integration with Team 2's main.c."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "4. Step-by-Step: dealer.c"},
+  {"type": "h2", "text": "Step 4.1 — show_dealer_stock(dealer_index)"},
+  {"type": "code", "language": "c", "text": "void show_dealer_stock(int dealer_index) {\n    int i;\n    print_subtitle(\"My Stock\");\n    printf(\"Logged in as: %s\\n\", dealer_name[dealer_index]);\n    print_table_product_header();\n    for (i = 0; i < product_total; i++) {\n        print_table_product_row(product_id[i], product_name[i],\n            dealer_stock[dealer_index][i]);\n    }\n    print_table_footer();\n}"},
+  {"type": "h2", "text": "Step 4.2 — order_from_company() validation chain"},
+  {"type": "numbered", "text": "Call show_company_products()."},
+  {"type": "numbered", "text": "Read product_id_input and quantity."},
+  {"type": "numbered", "text": "Search product — if not found, error + return."},
+  {"type": "numbered", "text": "If quantity <= 0, error + return."},
+  {"type": "numbered", "text": "If company_stock < quantity, error + return."},
+  {"type": "numbered", "text": "Transfer: company -= qty, dealer += qty."},
+  {"type": "numbered", "text": "print_order_summary(...)."},
+  {"type": "code", "language": "c", "text": "company_stock[product_index] -= quantity;\ndealer_stock[dealer_index][product_index] += quantity;\nprint_order_summary(product_name[product_index], quantity,\n    \"Company\", dealer_name[dealer_index]);"},
+  {"type": "h2", "text": "Step 4.3 — dealer_menu() login loop"},
+  {"type": "body", "text": "Show dealer table → scanf dealer ID → for-loop search with found flag → verify_password → do-while menu calling options 1–3."},
+  {"type": "flowchart",
+    "nodes": [
+      {"id": "s", "label": "Dealer login", "shape": "oval"},
+      {"id": "id", "label": "Find dealer ID", "shape": "diamond"},
+      {"id": "pw", "label": "Password OK?", "shape": "diamond"},
+      {"id": "o", "label": "Order from company", "shape": "rect"},
+      {"id": "t", "label": "Transfer stock", "shape": "rect"}
+    ],
+    "edges": [
+      {"from": "s", "to": "id"},
+      {"from": "id", "to": "pw", "label": "found"},
+      {"from": "pw", "to": "o", "label": "yes"},
+      {"from": "o", "to": "t"}
+    ],
+    "caption": "Dealer order path"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "5. Step-by-Step: retailer.c"},
+  {"type": "h2", "text": "Step 5.1 — Find linked dealer"},
+  {"type": "code", "language": "c", "text": "dealer_index = 0;\nfor (i = 0; i < dealer_total; i++) {\n    if (dealer_id[i] == retailer_dealer[retailer_index]) {\n        dealer_index = i;\n        break;\n    }\n}"},
+  {"type": "h2", "text": "Step 5.2 — order_from_dealer()"},
+  {"type": "body", "text": "Same pattern as dealer order, but:"},
+  {"type": "bullet", "text": "Show dealer with show_dealer_products(dealer_index)."},
+  {"type": "bullet", "text": "Check dealer_stock[dealer_index][product_index] >= quantity."},
+  {"type": "bullet", "text": "dealer_stock -= qty; retailer_stock += qty."},
+  {"type": "code", "language": "c", "text": "dealer_stock[dealer_index][product_index] -= quantity;\nretailer_stock[retailer_index][product_index] += quantity;\nprint_order_summary(product_name[product_index], quantity,\n    dealer_name[dealer_index], retailer_name[retailer_index]);"},
+  {"type": "h2", "text": "Step 5.3 — retailer_menu() login table"},
+  {"type": "body", "text": "Print custom table with ID, Retailer Name, Linked To using print_table_retailer_row(). Then ID search, find dealer_index, password, menu loop."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "6. The found Pattern (Copy Everywhere)"},
+  {"type": "code", "language": "c", "text": "found = 0;\nproduct_index = 0;\nfor (i = 0; i < product_total; i++) {\n    if (product_id[i] == product_id_input) {\n        found = 1;\n        product_index = i;\n        break;\n    }\n}\nif (found == 0) {\n    print_error(\"Product not found.\");\n    return;\n}"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "7. Test Your Part"},
+  {"type": "h2", "text": "Mini main for dealer only"},
+  {"type": "code", "language": "bash", "text": "gcc test_dealer.c data.c display.c dealer.c -o test3\n./test3"},
+  {"type": "code", "language": "c", "text": "/* test_dealer.c */\n#include \"data.h\"\n#include \"dealer.h\"\nint main() { init_data(); dealer_menu(); return 0; }"},
+  {"type": "h2", "text": "Full integration"},
+  {"type": "code", "language": "bash", "text": "gcc main.c data.c display.c company.c dealer.c retailer.c -o dms\n./dms"},
+  {"type": "table",
+    "headers": ["Test", "Input", "Expected stock change"],
+    "rows": [
+      ["Dealer order", "ID 1, Rice qty 10", "Company Rice 100→90, Dealer 20→30"],
+      ["Over-order", "Rice qty 5000", "Error, no change"],
+      ["Retailer order", "ID 1, Rice qty 5", "Dealer Rice 30→25, Retailer 5→10"],
+      ["Bad product ID", "ID 99", "Product not found"]
+    ],
+    "col_widths": [0.28, 0.32, 0.4],
+    "caption": "Critical tests"
+  },
+  {"type": "table",
+    "headers": ["Location", "After dealer+retailer tests"],
+    "rows": [
+      ["Company Rice", "90"],
+      ["Dhaka Dealer Rice", "25"],
+      ["Mirpur Shop Rice", "10"]
+    ],
+    "col_widths": [0.5, 0.5],
+    "caption": "Verify with Company panel (Team 2) option 3"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "8. Team Workflow Timeline"},
+  {"type": "table",
+    "headers": ["Day", "Team 1", "Team 2", "Team 3"],
+    "rows": [
+      ["1", "data.h + data.c arrays", "company.h stub", "dealer.h + retailer.h stubs"],
+      ["2", "display.c complete", "company.c views", "dealer stock + order"],
+      ["3", "Handoff + test", "main.c + stubs", "retailer.c complete"],
+      ["4", "Integration test all", "Remove stubs", "End-to-end orders"]
+    ],
+    "col_widths": [0.12, 0.3, 0.3, 0.3],
+    "caption": "Suggested 4-day plan"
+  },
+  {"type": "h2", "text": "Team 3 checklist"},
+  {"type": "bullet", "text": "dealer_menu() and retailer_menu() compile and link from main.c."},
+  {"type": "bullet", "text": "All three validation gates before every transfer."},
+  {"type": "bullet", "text": "Stock never goes negative on valid paths."},
+  {"type": "bullet", "text": "Commit: dealer.c, dealer.h, retailer.c, retailer.h."}
+]

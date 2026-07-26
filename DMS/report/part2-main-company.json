@@ -1,0 +1,122 @@
+[
+  {"type": "h1", "text": "Team 2 — Main + Company"},
+  {"type": "body", "text": "You build <b>main.c</b> (program entry), <b>company.h</b>, and <b>company.c</b> (Company panel). You wire the whole app together and give dealers/retailers a front door via the main menu."},
+  {"type": "callout", "text": "Your deliverable: main.c starts the app; company.c lets Company view dealers, products, and warehouse stock."},
+  {"type": "table",
+    "headers": ["Team", "Files", "Role"],
+    "rows": [
+      ["Team 1", "data.c, data.h, display.c, display.h", "Database + UI (YOU depend on this)"],
+      ["Team 2 (YOU)", "main.c, company.c, company.h", "Start program + Company panel"],
+      ["Team 3", "dealer.c, dealer.h, retailer.c, retailer.h", "Dealer + Retailer + orders"]
+    ],
+    "col_widths": [0.18, 0.42, 0.4],
+    "caption": "Three-team split"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "1. What You Are Building"},
+  {"type": "h2", "text": "1.1 main.c"},
+  {"type": "bullet", "text": "Calls <b>init_data()</b> from Team 1."},
+  {"type": "bullet", "text": "Shows main menu in a <b>do-while</b> loop."},
+  {"type": "bullet", "text": "Routes choice 1 → company_menu(), 2 → dealer_menu(), 3 → retailer_menu()."},
+  {"type": "h2", "text": "1.2 company.c"},
+  {"type": "bullet", "text": "Password login (verify_password from Team 1)."},
+  {"type": "bullet", "text": "View-only menus: list dealers, list products, view company stock."},
+  {"type": "bullet", "text": "No ordering — Company only monitors."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "2. What You Need From Teammates"},
+  {"type": "h2", "text": "From Team 1 (required first)"},
+  {"type": "table",
+    "headers": ["File / symbol", "Why"],
+    "rows": [
+      ["data.h + data.c", "init_data(), product_total, dealer arrays"],
+      ["display.h + display.c", "print_menu_*, print_error, verify_password"],
+      ["init_data()", "Call at start of main()"]
+    ],
+    "col_widths": [0.35, 0.65],
+    "caption": "Team 1 dependencies"
+  },
+  {"type": "h2", "text": "From Team 3 (for full main.c)"},
+  {"type": "body", "text": "You need <b>dealer_menu()</b> and <b>retailer_menu()</b> declared in dealer.h and retailer.h. Until Team 3 finishes, use <b>stubs</b>:"},
+  {"type": "code", "language": "c", "text": "/* dealer.h stub while Team 3 works */\nvoid dealer_menu();\n\n/* temporary dealer.c stub */\nvoid dealer_menu() {\n    printf(\"Dealer panel coming soon (Team 3).\\n\");\n}"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "3. Build Order"},
+  {"type": "numbered", "text": "Get Team 1's four files (data + display)."},
+  {"type": "numbered", "text": "Create <b>company.h</b> with void company_menu();"},
+  {"type": "numbered", "text": "Build <b>company.c</b> — list functions then company_menu()."},
+  {"type": "numbered", "text": "Build <b>main.c</b> with company only first."},
+  {"type": "numbered", "text": "Add dealer/retailer includes when Team 3 delivers headers."},
+  {"type": "numbered", "text": "Full integration compile with all 6 .c files."},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "4. Step-by-Step: company.h"},
+  {"type": "code", "language": "c", "text": "void company_menu();"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "5. Step-by-Step: company.c"},
+  {"type": "h2", "text": "Step 5.1 — Includes"},
+  {"type": "code", "language": "c", "text": "#include <stdio.h>\n#include \"company.h\"\n#include \"data.h\"\n#include \"display.h\""},
+  {"type": "h2", "text": "Step 5.2 — list_dealers()"},
+  {"type": "code", "language": "c", "text": "void list_dealers() {\n    int i;\n    print_subtitle(\"All Dealers\");\n    print_table_dealer_header();\n    for (i = 0; i < dealer_total; i++) {\n        print_table_dealer_row(dealer_id[i], dealer_name[i]);\n    }\n    printf(\"+------+----------------------+\\n\");\n}"},
+  {"type": "h2", "text": "Step 5.3 — list_products() and show_company_stock()"},
+  {"type": "body", "text": "Both loop over product_total and print product_id, product_name, company_stock. list_products uses subtitle \"All Products\"; show_company_stock uses \"Company Warehouse Stock\"."},
+  {"type": "code", "language": "c", "text": "void list_products() {\n    int i;\n    print_subtitle(\"All Products\");\n    print_table_product_header();\n    for (i = 0; i < product_total; i++) {\n        print_table_product_row(product_id[i], product_name[i], company_stock[i]);\n    }\n    print_table_footer();\n}"},
+  {"type": "h2", "text": "Step 5.4 — company_menu()"},
+  {"type": "code", "language": "c", "text": "void company_menu() {\n    int choice;\n    print_subtitle(\"Company Login\");\n    if (!verify_password()) return;\n    print_success(\"Login successful.\");\n\n    do {\n        print_menu_header(\"COMPANY PANEL\");\n        print_menu_item(1, \"View All Dealers\");\n        print_menu_item(2, \"View All Products\");\n        print_menu_item(3, \"View Company Stock\");\n        print_menu_item(0, \"Back to Main Menu\");\n        printf(\"\\nEnter your choice: \");\n        scanf(\"%d\", &choice);\n\n        if (choice == 1) list_dealers();\n        else if (choice == 2) list_products();\n        else if (choice == 3) show_company_stock();\n        else if (choice != 0) print_error(\"Invalid choice.\");\n    } while (choice != 0);\n}"},
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "6. Step-by-Step: main.c"},
+  {"type": "h2", "text": "Step 6.1 — Includes"},
+  {"type": "code", "language": "c", "text": "#include <stdio.h>\n#include \"data.h\"\n#include \"display.h\"\n#include \"company.h\"\n#include \"dealer.h\"\n#include \"retailer.h\""},
+  {"type": "h2", "text": "Step 6.2 — main() body"},
+  {"type": "code", "language": "c", "text": "int main() {\n    int choice;\n    init_data();\n\n    do {\n        print_menu_header(\"DISTRIBUTION MANAGEMENT SYSTEM\");\n        print_menu_item(1, \"Company Login\");\n        print_menu_item(2, \"Dealer Login\");\n        print_menu_item(3, \"Retailer Login\");\n        print_menu_item(0, \"Exit\");\n        printf(\"\\nEnter your choice: \");\n        scanf(\"%d\", &choice);\n\n        if (choice == 1) company_menu();\n        else if (choice == 2) dealer_menu();\n        else if (choice == 3) retailer_menu();\n        else if (choice != 0) print_error(\"Invalid choice.\");\n    } while (choice != 0);\n\n    printf(\"\\nThank you for using DMS. Goodbye!\\n\\n\");\n    return 0;\n}"},
+  {"type": "flowchart",
+    "nodes": [
+      {"id": "s", "label": "main()", "shape": "oval"},
+      {"id": "i", "label": "init_data()", "shape": "rect"},
+      {"id": "m", "label": "Main menu", "shape": "rect"},
+      {"id": "c", "label": "company_menu", "shape": "rect"},
+      {"id": "e", "label": "Exit", "shape": "oval"}
+    ],
+    "edges": [
+      {"from": "s", "to": "i"},
+      {"from": "i", "to": "m"},
+      {"from": "m", "to": "c", "label": "1"},
+      {"from": "c", "to": "m"},
+      {"from": "m", "to": "e", "label": "0"}
+    ],
+    "caption": "Your main.c flow (Company path)"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "7. Test Your Part"},
+  {"type": "h2", "text": "Phase A — Company only (before Team 3)"},
+  {"type": "code", "language": "bash", "text": "gcc main.c data.c display.c company.c dealer_stub.c retailer_stub.c -o dms\n./dms"},
+  {"type": "body", "text": "Use stub files with empty dealer_menu() and retailer_menu(). Test: main → 1 → password 1122 → options 1,2,3 → 0."},
+  {"type": "h2", "text": "Phase B — Full app"},
+  {"type": "code", "language": "bash", "text": "gcc main.c data.c display.c company.c dealer.c retailer.c -o dms\n./dms"},
+  {"type": "table",
+    "headers": ["Test", "Steps", "Expected"],
+    "rows": [
+      ["Company dealers", "1 → 1122 → 1", "Dhaka + Chittagong table"],
+      ["Company products", "1 → 1122 → 2", "Rice, Oil, Sugar"],
+      ["Company stock", "1 → 1122 → 3", "Same with warehouse label"],
+      ["Exit", "0", "Goodbye message"]
+    ],
+    "col_widths": [0.25, 0.35, 0.4],
+    "caption": "Company panel tests"
+  },
+
+  {"type": "pagebreak"},
+  {"type": "h1", "text": "8. Integration With Team 3"},
+  {"type": "body", "text": "When Team 3 adds real dealer.c and retailer.c, remove stubs. Your main.c should not change — only swap object files at link time."},
+  {"type": "callout", "text": "After a dealer order, Company option 3 should show lower company_stock — proves Team 1's shared arrays work."},
+  {"type": "h2", "text": "Team 2 checklist"},
+  {"type": "bullet", "text": "main.c calls init_data() before any menu."},
+  {"type": "bullet", "text": "company_menu() uses verify_password and do-while."},
+  {"type": "bullet", "text": "All three company views use for loops over totals from data.h."},
+  {"type": "bullet", "text": "Full gcc command links all 6 implementation .c files."},
+  {"type": "bullet", "text": "Commit: main.c, company.c, company.h."}
+]

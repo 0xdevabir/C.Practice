@@ -94,6 +94,10 @@ void dealer_menu() {
         return;
     }
 
+    if (!verify_password()) {
+        return;
+    }
+
     print_success("Login successful.");
 
     do {
@@ -117,3 +121,4 @@ void dealer_menu() {
         }
     } while (choice != 0);
 }
+

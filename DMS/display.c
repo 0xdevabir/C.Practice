@@ -1,5 +1,8 @@
 #include<stdio.h>
+#include<string.h>
 #include "display.h"
+
+#define LOGIN_PASSWORD "1122"
 
 void print_line() {
     printf("==============================================\n");
@@ -69,6 +72,20 @@ void print_error(char message[]) {
     printf("\n  ERROR: %s\n", message);
 }
 
+int verify_password() {
+    char password[20];
+
+    printf("Enter Password: ");
+    scanf("%s", password);
+
+    if (strcmp(password, LOGIN_PASSWORD) == 0) {
+        return 1;
+    }
+
+    print_error("Invalid password.");
+    return 0;
+}
+
 void print_order_summary(char product[], int quantity, char from[], char to[]) {
     printf("\n");
     print_line();
@@ -80,3 +97,4 @@ void print_order_summary(char product[], int quantity, char from[], char to[]) {
     printf("  To       : %s\n", to);
     print_line();
 }
+
