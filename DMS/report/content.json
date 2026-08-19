@@ -1,882 +1,1527 @@
 [
- {
-  "type": "h1",
-  "text": "Abstract"
- },
- {
-  "type": "body",
-  "text": "This report presents the design and implementation of a <b>Distribution Management System (DMS)</b>, a console-based application written in the C programming language. The system models a real-life product distribution chain consisting of three levels: a <b>company</b>, its <b>dealers</b>, and the <b>retailers</b> connected to those dealers. The company holds products in a central warehouse, dealers purchase stock from the company, and retailers purchase stock from their assigned dealer. The project was intentionally built using only fundamental programming concepts, namely variables, arrays, loops, conditional statements and functions, so that every part of the code remains easy to read and explain. The complete program is divided into six source modules that communicate through header files, demonstrating how a beginner-friendly project can still follow a clean, modular structure."
- },
- {
-  "type": "spacer",
-  "pt": 6
- },
- {
-  "type": "callout",
-  "text": "Keywords: C programming, distribution chain, modular design, arrays, stock management, console application"
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "1. Introduction"
- },
- {
-  "type": "h2",
-  "text": "1.1 Background"
- },
- {
-  "type": "body",
-  "text": "In the real world, most products do not travel directly from a manufacturer to a customer. Instead they pass through a distribution chain. A company produces goods and stores them in a warehouse. Dealers (also called distributors) buy these goods in bulk and store them regionally. Retailers, which are the local shops that customers actually visit, buy smaller quantities from a nearby dealer. Keeping track of how much stock exists at every level of this chain is a classic inventory management problem."
- },
- {
-  "type": "body",
-  "text": "This project simulates that exact flow in software. Although commercial distribution systems are large database-driven applications, the same core logic, checking stock, transferring quantities and recording the result, can be expressed with simple arrays and functions in C. Building it this way makes the underlying idea very clear, because nothing is hidden behind frameworks or libraries."
- },
- {
-  "type": "h2",
-  "text": "1.2 Motivation"
- },
- {
-  "type": "body",
-  "text": "The main motivation behind this project was to practise writing a <b>multi-file C program</b> that solves a realistic problem while staying inside the topics covered in a first programming course. Most beginner exercises fit in a single file, but real software is always split into modules. This project was a chance to learn how separate .c files share data and functions through header files, and how a program can be organised so that each file has one clear responsibility."
- },
- {
-  "type": "h2",
-  "text": "1.3 Objectives"
- },
- {
-  "type": "bullet",
-  "text": "To build a working simulation of a three-level distribution chain (company, dealer, retailer)."
- },
- {
-  "type": "bullet",
-  "text": "To allow each type of user to view the stock that belongs to them."
- },
- {
-  "type": "bullet",
-  "text": "To let dealers order products from the company, and retailers order from their dealer, with automatic stock transfer."
- },
- {
-  "type": "bullet",
-  "text": "To reject invalid operations such as ordering more than the available stock or entering an unknown product ID."
- },
- {
-  "type": "bullet",
-  "text": "To keep the entire codebase limited to basic C concepts: if-else, loops, arrays and functions."
- },
- {
-  "type": "bullet",
-  "text": "To organise the program into separate modules that communicate through header files."
- },
- {
-  "type": "h2",
-  "text": "1.4 Scope of the Project"
- },
- {
-  "type": "body",
-  "text": "The system is a console application that runs in a terminal. All data lives in memory while the program runs; when the program exits, the state resets to the default sample data. Features such as file storage, passwords, prices and payments were deliberately left out to keep the focus on the distribution logic itself. These are discussed later as future improvements."
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "2. System Overview"
- },
- {
-  "type": "h2",
-  "text": "2.1 The Distribution Chain"
- },
- {
-  "type": "body",
-  "text": "The whole system is built around one idea: <b>stock flows downward through the chain, and orders flow upward</b>. A retailer asks its dealer for products, and the dealer asks the company. Every successful order subtracts a quantity from the seller's stock and adds the same quantity to the buyer's stock, so the total amount of product in the system never changes on its own."
- },
- {
-  "type": "flowchart",
-  "nodes": [
-   {
-    "id": "c",
-    "label": "Company Warehouse",
-    "shape": "rect"
-   },
-   {
-    "id": "d",
-    "label": "Dealer",
-    "shape": "rect"
-   },
-   {
-    "id": "r",
-    "label": "Retailer (Shop)",
-    "shape": "rect"
-   },
-   {
-    "id": "cu",
-    "label": "Customer",
-    "shape": "oval"
-   }
-  ],
-  "edges": [
-   {
-    "from": "c",
-    "to": "d",
-    "label": "dealer orders"
-   },
-   {
-    "from": "d",
-    "to": "r",
-    "label": "retailer orders"
-   },
-   {
-    "from": "r",
-    "to": "cu",
-    "label": "daily sales"
-   }
-  ],
-  "caption": "Product flow through the three-level distribution chain"
- },
- {
-  "type": "h2",
-  "text": "2.2 The Three User Roles"
- },
- {
-  "type": "table",
-  "headers": [
-   "Role",
-   "Can View",
-   "Can Do"
-  ],
-  "rows": [
-   [
-    "Company",
-    "All dealers, all products, warehouse stock",
-    "Monitors the whole chain"
-   ],
-   [
-    "Dealer",
-    "Own stock, company product list",
-    "Order products from the company"
-   ],
-   [
-    "Retailer",
-    "Own stock, assigned dealer's product list",
-    "Order products from its dealer"
-   ]
-  ],
-  "col_widths": [
-   0.18,
-   0.42,
-   0.4
-  ],
-  "caption": "Capabilities of each user role"
- },
- {
-  "type": "body",
-  "text": "Each retailer is permanently linked to exactly one dealer. For example, in the default data, Mirpur Shop buys only from Dhaka Dealer, and Gulshan Shop buys only from Chittagong Dealer. This mirrors how territorial distribution works in practice: a shop has an assigned local distributor."
- },
- {
-  "type": "h2",
-  "text": "2.3 Default Sample Data"
- },
- {
-  "type": "body",
-  "text": "So that the program can be tested immediately, it starts with a small set of sample data loaded by the <b>init_data()</b> function. Three products exist in the system, and every dealer and retailer begins with some stock already on hand."
- },
- {
-  "type": "table",
-  "headers": [
-   "Product",
-   "Company",
-   "Dhaka Dealer",
-   "Chittagong Dealer",
-   "Mirpur Shop",
-   "Gulshan Shop"
-  ],
-  "rows": [
-   [
-    "Rice",
-    "100",
-    "20",
-    "25",
-    "5",
-    "4"
-   ],
-   [
-    "Oil",
-    "80",
-    "15",
-    "12",
-    "3",
-    "6"
-   ],
-   [
-    "Sugar",
-    "60",
-    "10",
-    "18",
-    "2",
-    "1"
-   ]
-  ],
-  "col_widths": [
-   0.13,
-   0.15,
-   0.17,
-   0.21,
-   0.16,
-   0.18
-  ],
-  "caption": "Initial stock (in units) at every level of the chain"
- },
- {
-  "type": "chart",
-  "chart_type": "bar",
-  "labels": [
-   "Rice",
-   "Oil",
-   "Sugar"
-  ],
-  "datasets": [
-   {
-    "label": "Company",
-    "values": [
-     100,
-     80,
-     60
+  {
+    "type": "h1",
+    "text": "Declaration"
+  },
+  {
+    "type": "body",
+    "text": "We hereby declare that this lab project has been done by us under the supervision of <b>Md. Ashraful Islam Talukder</b>, Lecturer, Department of Computer Science and Engineering, Daffodil International University. We also declare that neither this project nor any part of this project has been submitted elsewhere as lab projects."
+  },
+  {
+    "type": "spacer",
+    "pt": 10
+  },
+  {
+    "type": "h2",
+    "text": "Submitted To"
+  },
+  {
+    "type": "body",
+    "text": "<b>Md. Ashraful Islam Talukder</b><br/>Lecturer<br/>Department of Computer Science and Engineering<br/>Daffodil International University<br/><i>Signature: ____________________________ &nbsp;&nbsp; Date: ______________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 10
+  },
+  {
+    "type": "h2",
+    "text": "Submitted By"
+  },
+  {
+    "type": "body",
+    "text": "<b>Student Name:</b> Maliha Tasnim &nbsp;&nbsp;&nbsp; <b>ID:</b> 261-15-338 &nbsp;&nbsp; Dept. of CSE, DIU<br/><i>Signature: ____________________________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 4
+  },
+  {
+    "type": "body",
+    "text": "<b>Student Name:</b> Anika Akter Mim &nbsp;&nbsp;&nbsp; <b>ID:</b> 261-15-099 &nbsp;&nbsp; Dept. of CSE, DIU<br/><i>Signature: ____________________________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 4
+  },
+  {
+    "type": "body",
+    "text": "<b>Student Name:</b> Touhidul Islam &nbsp;&nbsp;&nbsp; <b>ID:</b> 261-15-377 &nbsp;&nbsp; Dept. of CSE, DIU<br/><i>Signature: ____________________________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 4
+  },
+  {
+    "type": "body",
+    "text": "<b>Student Name:</b> Umma Amina &nbsp;&nbsp;&nbsp; <b>ID:</b> 261-15-114 &nbsp;&nbsp; Dept. of CSE, DIU<br/><i>Signature: ____________________________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 4
+  },
+  {
+    "type": "body",
+    "text": "<b>Student Name:</b> Md Abir Hossain &nbsp;&nbsp;&nbsp; <b>ID:</b> 261-15-001 &nbsp;&nbsp; Dept. of CSE, DIU<br/><i>Signature: ____________________________</i>"
+  },
+  {
+    "type": "spacer",
+    "pt": 4
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Course &amp; Program Outcome"
+  },
+  {
+    "type": "body",
+    "text": "The following course has course outcomes as follows:"
+  },
+  {
+    "type": "table",
+    "headers": [
+      "CO",
+      "Statements"
+    ],
+    "rows": [
+      [
+        "CO1",
+        "Learn a basic programming language (C/C++) to imitate and manipulate various problem solving techniques."
+      ],
+      [
+        "CO2",
+        "Demonstrate skills to analyze competitive programming problems and identify to choose appropriate language constructs and data structures for designing, building and testing realistic, complex applications."
+      ],
+      [
+        "CO3",
+        "Work collaboratively in teams to design, develop, and implement a comprehensive software project, demonstrating effective communication, coordination, and integration of team efforts to meet project goals."
+      ],
+      [
+        "CO4",
+        "Communicate complex engineering concepts effectively through reports, presentations, and instructions to both technical and non-technical audiences."
+      ]
+    ],
+    "caption": "Table 1: Course Outcome Statements",
+    "col_widths": [
+      0.12,
+      0.88
     ]
-   },
-   {
-    "label": "Dealers (total)",
-    "values": [
-     45,
-     27,
-     28
+  },
+  {
+    "type": "spacer",
+    "pt": 10
+  },
+  {
+    "type": "table",
+    "headers": [
+      "CO",
+      "PO",
+      "Blooms",
+      "KP",
+      "CEP"
+    ],
+    "rows": [
+      [
+        "CO1",
+        "PO1",
+        "C1, C2, P1, P2, A1, A2",
+        "K1, K2, K3, K4",
+        "EP1, EP2, EP3"
+      ],
+      [
+        "CO2",
+        "PO2",
+        "C3, C4, P2, P3, A2, A3",
+        "K1, K2, K3, K4",
+        "EP1, EP2, EP3"
+      ],
+      [
+        "CO3",
+        "PO9",
+        "C3, C4, C5, P3, P4, A3, A4",
+        "",
+        ""
+      ],
+      [
+        "CO4",
+        "PO10",
+        "C6, P2, A4",
+        "",
+        ""
+      ]
+    ],
+    "caption": "Table 2: Mapping of CO, PO, Blooms, KP and CEP",
+    "col_widths": [
+      0.12,
+      0.12,
+      0.34,
+      0.22,
+      0.2
     ]
-   },
-   {
-    "label": "Retailers (total)",
-    "values": [
-     9,
-     9,
-     3
+  },
+  {
+    "type": "body",
+    "text": "The mapping justification of this table is provided in section 4.3.1, 4.3.2 and 4.3.3."
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Table of Contents"
+  },
+  {
+    "type": "table",
+    "headers": [
+      "Section",
+      "Title"
+    ],
+    "col_widths": [
+      0.22,
+      0.78
+    ],
+    "rows": [
+      [
+        "—",
+        "Declaration"
+      ],
+      [
+        "—",
+        "Course & Program Outcome"
+      ],
+      [
+        "1",
+        "Introduction"
+      ],
+      [
+        "1.1–1.6",
+        "Introduction, Motivation, Objectives, Feasibility, Gap Analysis, Outcome"
+      ],
+      [
+        "2",
+        "Architecture"
+      ],
+      [
+        "2.1–2.2",
+        "Design Specification, Overall Project Plan"
+      ],
+      [
+        "3",
+        "Implementation and Results"
+      ],
+      [
+        "3.1–3.2",
+        "Implementation, Results and Discussion"
+      ],
+      [
+        "4",
+        "Engineering Standards and Mapping"
+      ],
+      [
+        "4.1–4.3",
+        "Impact, Project Management, Complex Engineering Problem"
+      ],
+      [
+        "5",
+        "Conclusion"
+      ],
+      [
+        "5.1–5.3",
+        "Summary, Limitation, Future Work"
+      ],
+      [
+        "—",
+        "References"
+      ]
     ]
-   }
-  ],
-  "title": "Initial stock distribution across the chain",
-  "y_label": "Units",
-  "caption": "Most stock starts at the company and thins out toward the retailers, just like a real supply chain."
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "3. System Design"
- },
- {
-  "type": "h2",
-  "text": "3.1 Modular Architecture"
- },
- {
-  "type": "body",
-  "text": "The program is split into six modules. Each module is a pair of files: a <b>header file (.h)</b> that declares what the module offers, and a <b>source file (.c)</b> that contains the actual code. Any module that wants to use another module simply includes its header. This is the standard way C programs are organised, and it means each file can be read and understood on its own."
- },
- {
-  "type": "table",
-  "headers": [
-   "Module",
-   "Files",
-   "Responsibility"
-  ],
-  "rows": [
-   [
-    "Main",
-    "main.c",
-    "Program entry point; shows the main menu and routes to the right panel"
-   ],
-   [
-    "Data",
-    "data.h / data.c",
-    "Declares and stores all shared arrays; loads the default sample data"
-   ],
-   [
-    "Display",
-    "display.h / display.c",
-    "All printing helpers: menus, tables, error and success messages"
-   ],
-   [
-    "Company",
-    "company.h / company.c",
-    "Company panel: view dealers, products and warehouse stock"
-   ],
-   [
-    "Dealer",
-    "dealer.h / dealer.c",
-    "Dealer panel: login, view stock, order from the company"
-   ],
-   [
-    "Retailer",
-    "retailer.h / retailer.c",
-    "Retailer panel: login, view stock, order from the dealer"
-   ]
-  ],
-  "col_widths": [
-   0.14,
-   0.24,
-   0.62
-  ],
-  "caption": "The six modules and what each one is responsible for"
- },
- {
-  "type": "flowchart",
-  "nodes": [
-   {
-    "id": "m",
-    "label": "main.c",
-    "shape": "rect"
-   },
-   {
-    "id": "co",
-    "label": "company.c",
-    "shape": "rect"
-   },
-   {
-    "id": "de",
-    "label": "dealer.c",
-    "shape": "rect"
-   },
-   {
-    "id": "re",
-    "label": "retailer.c",
-    "shape": "rect"
-   },
-   {
-    "id": "da",
-    "label": "data.c (shared arrays)",
-    "shape": "parallelogram"
-   },
-   {
-    "id": "di",
-    "label": "display.c (printing)",
-    "shape": "parallelogram"
-   }
-  ],
-  "edges": [
-   {
-    "from": "m",
-    "to": "co",
-    "label": "choice 1"
-   },
-   {
-    "from": "m",
-    "to": "de",
-    "label": "choice 2"
-   },
-   {
-    "from": "m",
-    "to": "re",
-    "label": "choice 3"
-   },
-   {
-    "from": "co",
-    "to": "da"
-   },
-   {
-    "from": "de",
-    "to": "da"
-   },
-   {
-    "from": "re",
-    "to": "da"
-   },
-   {
-    "from": "da",
-    "to": "di"
-   }
-  ],
-  "caption": "Module relationships: the three panels all read and write the shared data module and print through the display module"
- },
- {
-  "type": "h2",
-  "text": "3.2 How the Modules Communicate"
- },
- {
-  "type": "body",
-  "text": "All shared information lives in <b>data.c</b> as global arrays. The header file <b>data.h</b> re-declares each array with the <b>extern</b> keyword, which tells the compiler that the variable exists in another file. When dealer.c includes data.h, it gains access to the exact same arrays that company.c and retailer.c use. This is why an order placed in the dealer panel is immediately visible in the company panel: there is only one copy of the data, shared by everyone."
- },
- {
-  "type": "code",
-  "language": "c",
-  "text": "/* data.h  (declaration - visible to every module) */\nextern int  company_stock[MAX_PRODUCTS];\nextern int  dealer_stock[MAX_DEALERS][MAX_PRODUCTS];\n\n/* data.c  (definition - the single real copy) */\nint company_stock[MAX_PRODUCTS];\nint dealer_stock[MAX_DEALERS][MAX_PRODUCTS];"
- },
- {
-  "type": "callout",
-  "text": "Key idea: a variable is DEFINED once in one .c file, but can be DECLARED with extern in a header so that every other file can use it."
- },
- {
-  "type": "h2",
-  "text": "3.3 Data Structures"
- },
- {
-  "type": "body",
-  "text": "Instead of structures or dynamic memory, the project uses <b>parallel arrays</b>: several arrays that share the same index. For example, index 0 of product_id, product_name and company_stock together describe the first product (ID 1, \"Rice\", 100 units). Stock owned by dealers and retailers is stored in <b>two-dimensional arrays</b>, where the row selects the dealer or retailer and the column selects the product."
- },
- {
-  "type": "table",
-  "headers": [
-   "Array",
-   "Type",
-   "Meaning"
-  ],
-  "rows": [
-   [
-    "product_id[10]",
-    "int",
-    "Numeric ID of each product"
-   ],
-   [
-    "product_name[10][50]",
-    "char",
-    "Name of each product (a string per product)"
-   ],
-   [
-    "company_stock[10]",
-    "int",
-    "Units of each product in the company warehouse"
-   ],
-   [
-    "dealer_id[5], dealer_name[5][50]",
-    "int / char",
-    "ID and name of each dealer"
-   ],
-   [
-    "dealer_stock[5][10]",
-    "int",
-    "dealer_stock[d][p] = units of product p held by dealer d"
-   ],
-   [
-    "retailer_id[5], retailer_name[5][50]",
-    "int / char",
-    "ID and name of each retailer"
-   ],
-   [
-    "retailer_dealer[5]",
-    "int",
-    "ID of the dealer this retailer is linked to"
-   ],
-   [
-    "retailer_stock[5][10]",
-    "int",
-    "retailer_stock[r][p] = units of product p held by retailer r"
-   ]
-  ],
-  "col_widths": [
-   0.34,
-   0.12,
-   0.54
-  ],
-  "caption": "The complete data model of the system"
- },
- {
-  "type": "body",
-  "text": "The sizes 10 and 5 come from the constants MAX_PRODUCTS, MAX_DEALERS and MAX_RETAILERS defined in data.h, so the capacity of the whole system can be changed by editing a single line."
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "4. Implementation"
- },
- {
-  "type": "h2",
-  "text": "4.1 Programming Concepts Used"
- },
- {
-  "type": "table",
-  "headers": [
-   "Concept",
-   "Where It Is Used"
-  ],
-  "rows": [
-   [
-    "if / else if",
-    "Menu routing, input validation, stock checking"
-   ],
-   [
-    "do-while loop",
-    "Every menu repeats until the user chooses 0 to exit"
-   ],
-   [
-    "for loop",
-    "Printing lists and tables; searching arrays by ID"
-   ],
-   [
-    "1-D arrays",
-    "Product IDs, names and company stock"
-   ],
-   [
-    "2-D arrays",
-    "Dealer and retailer stock (entity x product)"
-   ],
-   [
-    "Functions",
-    "Each feature is one small function with a clear name"
-   ],
-   [
-    "Multiple source files",
-    "Six modules linked together into one executable"
-   ],
-   [
-    "extern variables",
-    "Sharing the data arrays between all modules"
-   ]
-  ],
-  "col_widths": [
-   0.28,
-   0.72
-  ],
-  "caption": "Every language feature in the project is a fundamental one"
- },
- {
-  "type": "h2",
-  "text": "4.2 The Main Menu (main.c)"
- },
- {
-  "type": "body",
-  "text": "Execution starts in main(). It first calls init_data() to load the sample data, then enters a do-while loop that keeps showing the main menu until the user types 0. A chain of if-else statements sends the user to the correct panel."
- },
- {
-  "type": "code",
-  "language": "c",
-  "text": "int main() {\n    int choice;\n\n    init_data();\n\n    do {\n        print_menu_header(\"DISTRIBUTION MANAGEMENT SYSTEM\");\n        print_menu_item(1, \"Company Login\");\n        print_menu_item(2, \"Dealer Login\");\n        print_menu_item(3, \"Retailer Login\");\n        print_menu_item(0, \"Exit\");\n        printf(\"\\nEnter your choice: \");\n        scanf(\"%d\", &choice);\n\n        if (choice == 1)      company_menu();\n        else if (choice == 2) dealer_menu();\n        else if (choice == 3) retailer_menu();\n        else if (choice != 0)\n            print_error(\"Invalid choice. Please try again.\");\n    } while (choice != 0);\n\n    return 0;\n}"
- },
- {
-  "type": "h2",
-  "text": "4.3 Searching by ID (the found flag pattern)"
- },
- {
-  "type": "body",
-  "text": "Users refer to products, dealers and retailers by their ID numbers, but arrays are accessed by index. The program converts an ID to an index with a simple linear search. A flag variable named <b>found</b> starts at 0 and becomes 1 if the loop finds a match; if the loop finishes with found still 0, the ID does not exist and an error is shown. This little pattern appears everywhere in the project."
- },
- {
-  "type": "code",
-  "language": "c",
-  "text": "found = 0;\nproduct_index = 0;\nfor (i = 0; i < product_total; i++) {\n    if (product_id[i] == product_id_input) {\n        found = 1;\n        product_index = i;\n        break;\n    }\n}\n\nif (found == 0) {\n    print_error(\"Product not found. Check the table above.\");\n    return;\n}"
- },
- {
-  "type": "h2",
-  "text": "4.4 Placing an Order"
- },
- {
-  "type": "body",
-  "text": "Ordering is the heart of the system. Before any stock moves, the program runs three checks in order: the product must exist, the quantity must be positive, and the seller must actually have that many units. Only when all three checks pass does the transfer happen, and it is just two lines of arithmetic: subtract from the seller, add to the buyer."
- },
- {
-  "type": "code",
-  "language": "c",
-  "text": "/* from order_from_company() in dealer.c */\nif (company_stock[product_index] < quantity) {\n    print_error(\"Not enough stock in company warehouse.\");\n    return;\n}\n\ncompany_stock[product_index] -= quantity;\ndealer_stock[dealer_index][product_index] += quantity;\n\nprint_order_summary(product_name[product_index], quantity,\n                    \"Company\", dealer_name[dealer_index]);"
- },
- {
-  "type": "flowchart",
-  "nodes": [
-   {
-    "id": "s",
-    "label": "Start Order",
-    "shape": "oval"
-   },
-   {
-    "id": "in",
-    "label": "Show products, read ID + qty",
-    "shape": "parallelogram"
-   },
-   {
-    "id": "d1",
-    "label": "Product exists?",
-    "shape": "diamond"
-   },
-   {
-    "id": "d2",
-    "label": "Qty valid and stock enough?",
-    "shape": "diamond"
-   },
-   {
-    "id": "t",
-    "label": "Seller stock - qty, buyer + qty",
-    "shape": "rect"
-   },
-   {
-    "id": "e",
-    "label": "Show result, End",
-    "shape": "oval"
-   }
-  ],
-  "edges": [
-   {
-    "from": "s",
-    "to": "in"
-   },
-   {
-    "from": "in",
-    "to": "d1"
-   },
-   {
-    "from": "d1",
-    "to": "d2",
-    "label": "yes"
-   },
-   {
-    "from": "d1",
-    "to": "e",
-    "label": "no: error"
-   },
-   {
-    "from": "d2",
-    "to": "t",
-    "label": "yes"
-   },
-   {
-    "from": "d2",
-    "to": "e",
-    "label": "no: error"
-   },
-   {
-    "from": "t",
-    "to": "e"
-   }
-  ],
-  "caption": "Order processing: three validation gates protect the stock transfer"
- },
- {
-  "type": "h2",
-  "text": "4.5 The Display Module"
- },
- {
-  "type": "body",
-  "text": "All printing goes through helper functions in display.c, such as print_menu_header(), print_table_product_row() and print_order_summary(). Centralising the printing has two benefits: every screen in the program looks consistent, and the panel files stay short because they never repeat formatting code. The tables are drawn with plain text characters using printf width specifiers such as %-20s, which pads a string to 20 characters so the columns line up."
- },
- {
-  "type": "code",
-  "language": "c",
-  "text": "void print_table_product_header() {\n    printf(\"+------+----------------------+------------+\\n\");\n    printf(\"| ID   | Product Name         | Stock      |\\n\");\n    printf(\"+------+----------------------+------------+\\n\");\n}\n\nvoid print_table_product_row(int id, char name[], int stock) {\n    printf(\"| %-4d | %-20s | %-10d |\\n\", id, name, stock);\n}"
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "5. Compilation and Running"
- },
- {
-  "type": "body",
-  "text": "Because the program is spread across six .c files, all of them must be compiled and linked together. The GCC compiler does this in one command. Each .c file is compiled separately into machine code, and the linker then joins them into a single executable named dms. If any module called a function that no other module defines, the linker would report an undefined reference error, which is how C enforces that the modules fit together."
- },
- {
-  "type": "code",
-  "language": "bash",
-  "text": "cd DMS\ngcc -o dms main.c data.c company.c dealer.c retailer.c display.c\n./dms"
- },
- {
-  "type": "h2",
-  "text": "5.1 Sample Session"
- },
- {
-  "type": "body",
-  "text": "The following is a real capture of the program running. The user logs in as Dhaka Dealer and orders 10 units of Rice from the company. Notice how the product table is shown before the order so the user can see IDs and available stock."
- },
- {
-  "type": "code",
-  "text": "==============================================\n  DEALER PANEL\n==============================================\n\nWelcome, Dhaka Dealer\n\n  [1] View My Stock\n  [2] View Company Products\n  [3] Order From Company\n  [0] Logout\n\nEnter your choice: 3\n\n--- Company Products (Available to Order) ---\n\n+------+----------------------+------------+\n| ID   | Product Name         | Stock      |\n+------+----------------------+------------+\n| 1    | Rice                 | 100        |\n| 2    | Oil                  | 80         |\n| 3    | Sugar                | 60         |\n+------+----------------------+------------+\n\nEnter Product ID: 1\nEnter Quantity: 10\n\n==============================================\n  ORDER PLACED SUCCESSFULLY\n==============================================\n  Product  : Rice\n  Quantity : 10 units\n  From     : Company\n  To       : Dhaka Dealer\n=============================================="
- },
- {
-  "type": "body",
-  "text": "After this order, the company's Rice stock drops from 100 to 90 and Dhaka Dealer's Rice stock rises from 20 to 30. Both changes can be verified immediately from the company panel and the dealer panel, because both panels read the same shared arrays."
- },
- {
-  "type": "pagebreak"
- },
- {
-  "type": "h1",
-  "text": "6. Testing"
- },
- {
-  "type": "body",
-  "text": "The system was tested manually by walking through every menu path and deliberately entering both valid and invalid input. The table below lists the main test cases and the observed behaviour."
- },
- {
-  "type": "table",
-  "headers": [
-   "#",
-   "Test Case",
-   "Input",
-   "Expected Result",
-   "Status"
-  ],
-  "rows": [
-   [
-    "1",
-    "Company views products",
-    "Main menu 1, then 2",
-    "Table of 3 products with stock",
-    "Pass"
-   ],
-   [
-    "2",
-    "Dealer login with valid ID",
-    "Dealer ID 1",
-    "Login success, panel opens",
-    "Pass"
-   ],
-   [
-    "3",
-    "Dealer login with invalid ID",
-    "Dealer ID 9",
-    "Error: dealer not found",
-    "Pass"
-   ],
-   [
-    "4",
-    "Valid order",
-    "Rice, qty 10",
-    "Stock moves company to dealer",
-    "Pass"
-   ],
-   [
-    "5",
-    "Order more than stock",
-    "Rice, qty 5000",
-    "Error: not enough stock",
-    "Pass"
-   ],
-   [
-    "6",
-    "Order zero or negative qty",
-    "qty -5",
-    "Error: quantity must be positive",
-    "Pass"
-   ],
-   [
-    "7",
-    "Order unknown product",
-    "Product ID 99",
-    "Error: product not found",
-    "Pass"
-   ],
-   [
-    "8",
-    "Retailer orders from dealer",
-    "Mirpur Shop, Oil, qty 2",
-    "Stock moves dealer to retailer",
-    "Pass"
-   ],
-   [
-    "9",
-    "Stock consistency",
-    "Order then re-check both panels",
-    "Totals stay balanced",
-    "Pass"
-   ],
-   [
-    "10",
-    "Invalid menu choice",
-    "Choice 7",
-    "Error, menu shown again",
-    "Pass"
-   ]
-  ],
-  "col_widths": [
-   0.05,
-   0.27,
-   0.2,
-   0.34,
-   0.14
-  ],
-  "caption": "Manual test cases and results"
- },
- {
-  "type": "callout",
-  "text": "The most important invariant tested: after any order, the amount removed from the seller always equals the amount added to the buyer, so no stock is ever created or destroyed by mistake."
- },
- {
-  "type": "h1",
-  "text": "7. Limitations and Future Work"
- },
- {
-  "type": "h2",
-  "text": "7.1 Current Limitations"
- },
- {
-  "type": "bullet",
-  "text": "Data is not saved to disk, so all changes are lost when the program closes."
- },
- {
-  "type": "bullet",
-  "text": "There are no prices or payments; orders only move quantities."
- },
- {
-  "type": "bullet",
-  "text": "Products, dealers and retailers cannot be added while the program is running; they are fixed in init_data()."
- },
- {
-  "type": "bullet",
-  "text": "There is no password protection; anyone can log in as any dealer or retailer by choosing an ID."
- },
- {
-  "type": "bullet",
-  "text": "Non-numeric input to scanf can confuse the menus, since input is read as plain integers."
- },
- {
-  "type": "h2",
-  "text": "7.2 Future Improvements"
- },
- {
-  "type": "bullet",
-  "text": "Save and load the stock data using C file handling (fopen, fprintf, fscanf), so the state survives between runs."
- },
- {
-  "type": "bullet",
-  "text": "Add product prices and calculate the total cost of each order."
- },
- {
-  "type": "bullet",
-  "text": "Add functions to register new products, dealers and retailers at runtime."
- },
- {
-  "type": "bullet",
-  "text": "Keep a simple order history log so past transactions can be reviewed."
- },
- {
-  "type": "bullet",
-  "text": "Add low-stock warnings when a product falls below a threshold."
- },
- {
-  "type": "h1",
-  "text": "8. Conclusion"
- },
- {
-  "type": "body",
-  "text": "The Distribution Management System achieves everything it set out to do. It models a realistic three-level supply chain, enforces sensible rules on every stock transfer, and presents its information in clean, readable console tables. More importantly, it proves that a well-structured, multi-file program does not require advanced language features: the entire system is built from arrays, loops, conditionals and functions. Working on this project gave practical experience in dividing a problem into modules, sharing data between source files with extern declarations, validating user input, and designing text output that people can actually read. The final program compiles cleanly with GCC and behaved correctly in all ten test scenarios."
- },
- {
-  "type": "bibliography",
-  "items": [
-   {
-    "id": "1",
-    "text": "Kernighan, B. W., & Ritchie, D. M. (1988). The C Programming Language (2nd ed.). Prentice Hall."
-   },
-   {
-    "id": "2",
-    "text": "GNU Project. (2024). GCC, the GNU Compiler Collection - Online Documentation. https://gcc.gnu.org/onlinedocs/"
-   },
-   {
-    "id": "3",
-    "text": "TutorialsPoint. (2024). C Programming Tutorial - Multi-file Programs and Header Files. https://www.tutorialspoint.com/cprogramming/"
-   },
-   {
-    "id": "4",
-    "text": "Chopra, S., & Meindl, P. (2019). Supply Chain Management: Strategy, Planning, and Operation (7th ed.). Pearson."
-   }
-  ]
- }
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Chapter 1"
+  },
+  {
+    "type": "h2",
+    "text": "Introduction"
+  },
+  {
+    "type": "body",
+    "text": "This chapter introduces the Distribution Management System (DMS) project, detailing the background of the problem and the motivation behind developing a modular, terminal-based inventory application in C. It also outlines the project's core objectives, feasibility, gap analysis, and the expected outcomes for simulating a three-level product distribution chain."
+  },
+  {
+    "type": "h2",
+    "text": "1.1 Introduction"
+  },
+  {
+    "type": "body",
+    "text": "In the real world, most products do not travel directly from a manufacturer to a customer. Instead they pass through a distribution chain. A company produces goods and stores them in a warehouse. Dealers (also called distributors) buy these goods in bulk and store them regionally. Retailers, which are the local shops that customers actually visit, buy smaller quantities from a nearby dealer. Keeping track of how much stock exists at every level of this chain is a classic inventory management problem."
+  },
+  {
+    "type": "body",
+    "text": "Traditionally, small businesses track this flow using paper ledgers or disconnected spreadsheets. Those methods are slow, error-prone, and hard to keep consistent when multiple people place orders. Commercial distribution systems solve the problem with large database-driven applications, but the same core logic — checking stock, transferring quantities, and recording the result — can be expressed with simple arrays and functions in C."
+  },
+  {
+    "type": "body",
+    "text": "This project proposes the development of a <b>Distribution Management System</b> utilizing the C programming language. The system models a three-level chain (Company → Dealer → Retailer), provides role-based console panels, validates orders before stock moves, and organises the code into six communicating modules. Password-protected access is included for company, dealer, and retailer panels. By limiting the implementation to fundamental C concepts — variables, arrays, loops, conditionals, and functions — the project remains easy to read, explain, and extend."
+  },
+  {
+    "type": "h2",
+    "text": "1.2 Motivation"
+  },
+  {
+    "type": "body",
+    "text": "The computational motivation for this project is to replace informal, error-prone stock tracking with a structured digital simulation of a supply chain. Handling orders computationally ensures that stock is never created or destroyed by mistake: every successful transfer removes the ordered quantity from the seller and adds the same quantity to the buyer."
+  },
+  {
+    "type": "body",
+    "text": "Solving this problem personally reinforces understanding of multi-file C programs, header-based declarations with <b>extern</b>, parallel arrays as a beginner-friendly data model, and defensive input validation. It is recommended that learners practice this kind of modular console application before moving on to database-backed inventory systems, because the underlying transfer rules remain the same."
+  },
+  {
+    "type": "h2",
+    "text": "1.3 Objectives"
+  },
+  {
+    "type": "body",
+    "text": "The primary objectives of developing this Distribution Management System are as follows:"
+  },
+  {
+    "type": "numbered",
+    "text": "To develop a terminal-based three-level distribution simulation (company, dealer, retailer) in C."
+  },
+  {
+    "type": "numbered",
+    "text": "To implement role-specific panels that allow each user type to view the stock that belongs to them."
+  },
+  {
+    "type": "numbered",
+    "text": "To allow dealers to order from the company and retailers to order from their linked dealer, with automatic stock transfer."
+  },
+  {
+    "type": "numbered",
+    "text": "To reject invalid operations such as unknown IDs, non-positive quantities, and insufficient seller stock."
+  },
+  {
+    "type": "numbered",
+    "text": "To organise the program into separate modules that communicate through header files."
+  },
+  {
+    "type": "numbered",
+    "text": "To keep the entire codebase limited to fundamental C concepts: if-else, loops, arrays, and functions."
+  },
+  {
+    "type": "h2",
+    "text": "1.4 Feasibility Study"
+  },
+  {
+    "type": "body",
+    "text": "Existing commercial inventory and ERP systems are often resource-intensive, relying on complex web frameworks and heavy SQL databases. However, a review of similar console-based applications demonstrates that lightweight, offline simulations are highly feasible for teaching and for low-resource environments. Methodologically, foundational literature on C programming [1] emphasises clear modular structure and careful use of arrays for related data. This C-based project proves highly feasible by successfully implementing core inventory concepts — shared stock arrays, ID-based lookup, and guarded transfers — using only the standard C library and the GCC toolchain. It is recommended to utilise this lightweight architecture as a foundational, easily deployable model before introducing file persistence or a full database."
+  },
+  {
+    "type": "h2",
+    "text": "1.5 Gap Analysis"
+  },
+  {
+    "type": "numbered",
+    "text": "The absence of a simple educational tool that shows how stock moves through a multi-level distribution chain using only first-course C concepts."
+  },
+  {
+    "type": "numbered",
+    "text": "The lack of modular multi-file examples that still remain easy for beginners to read, compile, and explain."
+  },
+  {
+    "type": "numbered",
+    "text": "The inefficiency of informal paper or spreadsheet tracking for demonstrating order validation rules such as insufficient stock."
+  },
+  {
+    "type": "numbered",
+    "text": "The gap between single-file beginner exercises and real software, where responsibilities are split across modules linked by headers."
+  },
+  {
+    "type": "numbered",
+    "text": "The heavy resource dependence of commercial inventory systems, creating demand for a local, lightweight terminal-based teaching model."
+  },
+  {
+    "type": "h2",
+    "text": "1.6 Project Outcome"
+  },
+  {
+    "type": "numbered",
+    "text": "A fully functional, lightweight terminal-based application that simulates company, dealer, and retailer roles with password-protected panels."
+  },
+  {
+    "type": "numbered",
+    "text": "Automatic and consistent stock transfer when dealers order from the company and retailers order from their assigned dealer."
+  },
+  {
+    "type": "numbered",
+    "text": "Clear tabular console views for products, dealers, retailers, and stock levels at every stage of the chain."
+  },
+  {
+    "type": "numbered",
+    "text": "Defensive validation that rejects unknown IDs, invalid quantities, and overselling."
+  },
+  {
+    "type": "numbered",
+    "text": "A modular six-file C codebase that demonstrates header-based communication and parallel-array data modelling."
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Chapter 2"
+  },
+  {
+    "type": "h2",
+    "text": "Architecture"
+  },
+  {
+    "type": "body",
+    "text": "This chapter presents the architectural framework and operational flow of the Distribution Management System. It focuses on the design specifications of the modular C application, featuring flowcharts that illustrate user interactions and stock-transfer pathways, followed by the overall project plan."
+  },
+  {
+    "type": "h2",
+    "text": "2.1 Design Specification"
+  },
+  {
+    "type": "body",
+    "text": "The system is organised around six modules. Shared inventory data lives in <b>data.c</b> / <b>data.h</b>. Presentation helpers live in <b>display.c</b> / <b>display.h</b>. Role behaviour is implemented in <b>company.c</b>, <b>dealer.c</b>, and <b>retailer.c</b>. Execution begins in <b>main.c</b>."
+  },
+  {
+    "type": "table",
+    "headers": [
+      "Module",
+      "Files",
+      "Responsibility"
+    ],
+    "rows": [
+      [
+        "Entry",
+        "main.c",
+        "Initialises data and routes users to role panels"
+      ],
+      [
+        "Data",
+        "data.c / data.h",
+        "Global arrays, init_data(), product listing helpers"
+      ],
+      [
+        "Display",
+        "display.c / display.h",
+        "Menus, tables, success/error messages, password check"
+      ],
+      [
+        "Company",
+        "company.c / company.h",
+        "Company login and warehouse/dealer/product views"
+      ],
+      [
+        "Dealer",
+        "dealer.c / dealer.h",
+        "Dealer login, stock view, order from company"
+      ],
+      [
+        "Retailer",
+        "retailer.c / retailer.h",
+        "Retailer login, stock view, order from linked dealer"
+      ]
+    ],
+    "caption": "Table 2.1: Modules and responsibilities",
+    "col_widths": [
+      0.18,
+      0.28,
+      0.54
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "Overall System Flow"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.1: Main program control flow",
+    "nodes": [
+      {
+        "id": "s",
+        "label": "Start",
+        "shape": "oval"
+      },
+      {
+        "id": "init",
+        "label": "init_data()",
+        "shape": "rect"
+      },
+      {
+        "id": "menu",
+        "label": "Show Main Menu",
+        "shape": "rect"
+      },
+      {
+        "id": "d",
+        "label": "User choice?",
+        "shape": "diamond"
+      },
+      {
+        "id": "panel",
+        "label": "Open role panel then return to menu",
+        "shape": "rect"
+      },
+      {
+        "id": "exit",
+        "label": "Exit program",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "s",
+        "to": "init"
+      },
+      {
+        "from": "init",
+        "to": "menu"
+      },
+      {
+        "from": "menu",
+        "to": "d"
+      },
+      {
+        "from": "d",
+        "to": "panel",
+        "label": "1 / 2 / 3"
+      },
+      {
+        "from": "panel",
+        "to": "menu",
+        "label": "loop"
+      },
+      {
+        "from": "d",
+        "to": "exit",
+        "label": "0"
+      }
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "Distribution Chain"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.2: Product flow through the three-level chain",
+    "nodes": [
+      {
+        "id": "co",
+        "label": "Company Warehouse",
+        "shape": "rect"
+      },
+      {
+        "id": "de",
+        "label": "Dealer Stock",
+        "shape": "rect"
+      },
+      {
+        "id": "re",
+        "label": "Retailer Stock",
+        "shape": "rect"
+      }
+    ],
+    "edges": [
+      {
+        "from": "co",
+        "to": "de",
+        "label": "Dealer orders"
+      },
+      {
+        "from": "de",
+        "to": "re",
+        "label": "Retailer orders"
+      }
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "Password Verification"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.3: verify_password() function",
+    "nodes": [
+      {
+        "id": "s",
+        "label": "Start",
+        "shape": "oval"
+      },
+      {
+        "id": "read",
+        "label": "Read password input",
+        "shape": "rect"
+      },
+      {
+        "id": "d",
+        "label": "Matches LOGIN_PASSWORD?",
+        "shape": "diamond"
+      },
+      {
+        "id": "ok",
+        "label": "Return 1 (success)",
+        "shape": "rect"
+      },
+      {
+        "id": "bad",
+        "label": "Print error, return 0",
+        "shape": "rect"
+      },
+      {
+        "id": "e",
+        "label": "End",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "s",
+        "to": "read"
+      },
+      {
+        "from": "read",
+        "to": "d"
+      },
+      {
+        "from": "d",
+        "to": "ok",
+        "label": "Yes"
+      },
+      {
+        "from": "d",
+        "to": "bad",
+        "label": "No"
+      },
+      {
+        "from": "ok",
+        "to": "e"
+      },
+      {
+        "from": "bad",
+        "to": "e"
+      }
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "Dealer Order From Company"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.4: order_from_company() — three validation gates",
+    "nodes": [
+      {
+        "id": "s",
+        "label": "Start order",
+        "shape": "oval"
+      },
+      {
+        "id": "show",
+        "label": "Show company products",
+        "shape": "rect"
+      },
+      {
+        "id": "d",
+        "label": "Valid ID, qty and stock?",
+        "shape": "diamond"
+      },
+      {
+        "id": "ok",
+        "label": "Transfer stock + print summary",
+        "shape": "rect"
+      },
+      {
+        "id": "err",
+        "label": "Print error message",
+        "shape": "rect"
+      },
+      {
+        "id": "e",
+        "label": "End",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "s",
+        "to": "show"
+      },
+      {
+        "from": "show",
+        "to": "d"
+      },
+      {
+        "from": "d",
+        "to": "ok",
+        "label": "Pass"
+      },
+      {
+        "from": "d",
+        "to": "err",
+        "label": "Fail"
+      },
+      {
+        "from": "ok",
+        "to": "e"
+      },
+      {
+        "from": "err",
+        "to": "e"
+      }
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "Retailer Order From Dealer"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.5: order_from_dealer() control flow",
+    "nodes": [
+      {
+        "id": "s",
+        "label": "Start",
+        "shape": "oval"
+      },
+      {
+        "id": "link",
+        "label": "Resolve linked dealer",
+        "shape": "rect"
+      },
+      {
+        "id": "show",
+        "label": "Show dealer products",
+        "shape": "rect"
+      },
+      {
+        "id": "d",
+        "label": "Valid ID, qty and stock?",
+        "shape": "diamond"
+      },
+      {
+        "id": "ok",
+        "label": "Transfer dealer to retailer",
+        "shape": "rect"
+      },
+      {
+        "id": "err",
+        "label": "Reject with error",
+        "shape": "rect"
+      },
+      {
+        "id": "e",
+        "label": "End",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "s",
+        "to": "link"
+      },
+      {
+        "from": "link",
+        "to": "show"
+      },
+      {
+        "from": "show",
+        "to": "d"
+      },
+      {
+        "from": "d",
+        "to": "ok",
+        "label": "Valid"
+      },
+      {
+        "from": "d",
+        "to": "err",
+        "label": "Invalid"
+      },
+      {
+        "from": "ok",
+        "to": "e"
+      },
+      {
+        "from": "err",
+        "to": "e"
+      }
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "ID Lookup Pattern"
+  },
+  {
+    "type": "flowchart",
+    "figure": false,
+    "caption": "Fig 2.6: Linear ID-to-index search used across modules",
+    "nodes": [
+      {
+        "id": "s",
+        "label": "Start search",
+        "shape": "oval"
+      },
+      {
+        "id": "loop",
+        "label": "Scan array by index",
+        "shape": "rect"
+      },
+      {
+        "id": "d",
+        "label": "ID found?",
+        "shape": "diamond"
+      },
+      {
+        "id": "ok",
+        "label": "Use matched index",
+        "shape": "rect"
+      },
+      {
+        "id": "err",
+        "label": "Report not found",
+        "shape": "rect"
+      },
+      {
+        "id": "e",
+        "label": "End",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "s",
+        "to": "loop"
+      },
+      {
+        "from": "loop",
+        "to": "d"
+      },
+      {
+        "from": "d",
+        "to": "ok",
+        "label": "Yes"
+      },
+      {
+        "from": "d",
+        "to": "err",
+        "label": "No"
+      },
+      {
+        "from": "ok",
+        "to": "e"
+      },
+      {
+        "from": "err",
+        "to": "e"
+      }
+    ]
+  },
+  {
+    "type": "callout",
+    "text": "Key architectural idea: stock arrays are defined once in data.c and declared with extern in data.h so every panel module can read and update the same shared inventory state."
+  },
+  {
+    "type": "h2",
+    "text": "2.2 Overall Project Plan"
+  },
+  {
+    "type": "body",
+    "text": "The overall project plan adopts a systematic approach to develop the Distribution Management System. Initially, the shared data model and sample products/dealers/retailers were designed using parallel arrays. Next, display helpers and the three role panels were implemented so each actor could inspect stock. Finally, order-transfer logic with validation gates and password-protected login were integrated to ensure a consistent, beginner-friendly terminal application that preserves stock integrity across the chain."
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Chapter 3"
+  },
+  {
+    "type": "h2",
+    "text": "Implementation and Results"
+  },
+  {
+    "type": "body",
+    "text": "This chapter details the practical implementation of the C-based Distribution Management System, highlighting the programming constructs, modular organisation, and validation algorithms applied. It then presents the system's operational outputs with technical discussion of the underlying logic."
+  },
+  {
+    "type": "h2",
+    "text": "3.1 Implementation"
+  },
+  {
+    "type": "h3",
+    "text": "3.1.1 Data Model (data.h)"
+  },
+  {
+    "type": "body",
+    "text": "Capacity limits and shared declarations live in the data header. Parallel arrays keep related fields aligned by index without using structures."
+  },
+  {
+    "type": "code",
+    "text": "#define MAX_PRODUCTS 10\n#define MAX_DEALERS 5\n#define MAX_RETAILERS 5\n\nextern int  product_id[MAX_PRODUCTS];\nextern char product_name[MAX_PRODUCTS][50];\nextern int  company_stock[MAX_PRODUCTS];\nextern int  product_total;\n\nextern int  dealer_id[MAX_DEALERS];\nextern char dealer_name[MAX_DEALERS][50];\nextern int  dealer_stock[MAX_DEALERS][MAX_PRODUCTS];\nextern int  dealer_total;\n\nextern int  retailer_id[MAX_RETAILERS];\nextern char retailer_name[MAX_RETAILERS][50];\nextern int  retailer_dealer[MAX_RETAILERS];\nextern int  retailer_stock[MAX_RETAILERS][MAX_PRODUCTS];\nextern int  retailer_total;",
+    "language": "c"
+  },
+  {
+    "type": "h3",
+    "text": "3.1.2 Main Menu (main.c)"
+  },
+  {
+    "type": "body",
+    "text": "Execution starts in main(). It calls init_data() once, then uses a do-while loop and if-else routing to open the selected panel."
+  },
+  {
+    "type": "code",
+    "text": "int main() {\n    int choice;\n    init_data();\n    do {\n        print_menu_header(\"DISTRIBUTION MANAGEMENT SYSTEM\");\n        print_menu_item(1, \"Company Login\");\n        print_menu_item(2, \"Dealer Login\");\n        print_menu_item(3, \"Retailer Login\");\n        print_menu_item(0, \"Exit\");\n        printf(\"\\nEnter your choice: \");\n        scanf(\"%d\", &choice);\n        if (choice == 1) company_menu();\n        else if (choice == 2) dealer_menu();\n        else if (choice == 3) retailer_menu();\n        else if (choice != 0)\n            print_error(\"Invalid choice. Please try again.\");\n    } while (choice != 0);\n    return 0;\n}",
+    "language": "c"
+  },
+  {
+    "type": "h3",
+    "text": "3.1.3 Password Gate (display.c)"
+  },
+  {
+    "type": "body",
+    "text": "All three role panels call verify_password() before granting access. The shared password is defined as a preprocessor constant."
+  },
+  {
+    "type": "code",
+    "text": "#define LOGIN_PASSWORD \"1122\"\n\nint verify_password() {\n    char password[20];\n    printf(\"Enter Password: \");\n    scanf(\"%s\", password);\n    if (strcmp(password, LOGIN_PASSWORD) == 0) return 1;\n    print_error(\"Invalid password.\");\n    return 0;\n}",
+    "language": "c"
+  },
+  {
+    "type": "h3",
+    "text": "3.1.4 Stock Transfer (dealer.c)"
+  },
+  {
+    "type": "body",
+    "text": "Ordering is the heart of the system. Before any stock moves, the program runs three checks: the product must exist, the quantity must be positive, and the seller must have enough units."
+  },
+  {
+    "type": "code",
+    "text": "if (found == 0) {\n    print_error(\"Product not found. Check the table above.\");\n    return;\n}\nif (quantity <= 0) {\n    print_error(\"Quantity must be greater than 0.\");\n    return;\n}\nif (company_stock[product_index] < quantity) {\n    print_error(\"Not enough stock in company warehouse.\");\n    return;\n}\ncompany_stock[product_index] -= quantity;\ndealer_stock[dealer_index][product_index] += quantity;\nprint_order_summary(product_name[product_index], quantity,\n                    \"Company\", dealer_name[dealer_index]);",
+    "language": "c"
+  },
+  {
+    "type": "h3",
+    "text": "3.1.5 Retailer Link Constraint"
+  },
+  {
+    "type": "body",
+    "text": "Each retailer is permanently linked to exactly one dealer through retailer_dealer[]. Mirpur Shop buys only from Dhaka Dealer; Gulshan Shop buys only from Chittagong Dealer. The retailer order path resolves that link before showing available products."
+  },
+  {
+    "type": "h3",
+    "text": "3.1.6 Compilation"
+  },
+  {
+    "type": "body",
+    "text": "Because the program is spread across six .c files, all of them must be compiled and linked together:"
+  },
+  {
+    "type": "code",
+    "text": "gcc -o dms main.c data.c company.c dealer.c retailer.c display.c\n./dms",
+    "language": "bash"
+  },
+  {
+    "type": "table",
+    "headers": [
+      "Concept",
+      "Where it appears"
+    ],
+    "rows": [
+      [
+        "Variables & arrays",
+        "All stock, ID, and name arrays in data.c"
+      ],
+      [
+        "Loops",
+        "Listing tables; ID search; menu do-while"
+      ],
+      [
+        "if-else",
+        "Menu routing; validation gates"
+      ],
+      [
+        "Functions",
+        "One responsibility per helper/menu function"
+      ],
+      [
+        "Header files",
+        "Declarations shared across modules"
+      ],
+      [
+        "extern",
+        "data.h exposes arrays defined in data.c"
+      ],
+      [
+        "2D arrays",
+        "dealer_stock / retailer_stock by owner × product"
+      ]
+    ],
+    "caption": "Table 3.1: Fundamental C concepts used in the project",
+    "col_widths": [
+      0.32,
+      0.68
+    ]
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h2",
+    "text": "3.2 Results and Discussion"
+  },
+  {
+    "type": "body",
+    "text": "In this section, the core operational outputs of the Distribution Management System are presented, along with technical discussions detailing the underlying C programming logic."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.1 Main Menu"
+  },
+  {
+    "type": "code",
+    "text": "==============================================\n  DISTRIBUTION MANAGEMENT SYSTEM\n==============================================\n\n  [1] Company Login\n  [2] Dealer Login\n  [3] Retailer Login\n  [0] Exit"
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> The main menu is rendered by print_menu_header() and print_menu_item(). A do-while loop keeps the application alive until the user selects 0. Invalid numeric choices are rejected with print_error() without terminating the program."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.2 Company Login and Panel"
+  },
+  {
+    "type": "code",
+    "text": "==============================================\n  SUCCESS: Login successful.\n==============================================\n\n==============================================\n  COMPANY PANEL\n==============================================\n\n  [1] View All Dealers\n  [2] View All Products\n  [3] View Company Stock\n  [0] Back to Main Menu"
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> company_menu() first calls verify_password(). On success it enters a nested menu loop for viewing dealers, products, and warehouse stock. This isolates company read-only inspection from ordering, which is intentionally performed by dealers."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.3 Viewing Dealers and Products"
+  },
+  {
+    "type": "code",
+    "text": "--- All Dealers ---\n\n+------+----------------------+\n| ID   | Dealer Name          |\n+------+----------------------+\n| 1    | Dhaka Dealer         |\n| 2    | Chittagong Dealer    |\n+------+----------------------+\n\n--- All Products ---\n\n+------+----------------------+------------+\n| ID   | Product Name         | Stock      |\n+------+----------------------+------------+\n| 1    | Rice                 | 100        |\n| 2    | Oil                  | 80         |\n| 3    | Sugar                | 60         |\n+------+----------------------+------------+"
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> list_dealers() and list_products() iterate from 0 to dealer_total / product_total and print rows through the display helpers. Using shared table printers keeps formatting consistent across panels."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.4 Dealer Order From Company"
+  },
+  {
+    "type": "code",
+    "text": "--- Place Order to Company ---\n\n--- Company Products (Available to Order) ---\n\n+------+----------------------+------------+\n| ID   | Product Name         | Stock      |\n+------+----------------------+------------+\n| 1    | Rice                 | 100        |\n| 2    | Oil                  | 80         |\n| 3    | Sugar                | 60         |\n+------+----------------------+------------+\n\nEnter Product ID: 1\nEnter Quantity: 10\n\n==============================================\n  ORDER PLACED SUCCESSFULLY\n==============================================\n  Product  : Rice\n  Quantity : 10 units\n  From     : Company\n  To       : Dhaka Dealer\n=============================================="
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> After selecting Product ID 1 (Rice) and quantity 10, order_from_company() subtracts 10 from company_stock and adds 10 to dealer_stock for Dhaka Dealer. The order summary confirms product, quantity, source, and destination in one place."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.5 Updated Dealer Stock"
+  },
+  {
+    "type": "code",
+    "text": "--- My Stock ---\nLogged in as: Dhaka Dealer\n\n+------+----------------------+------------+\n| ID   | Product Name         | Stock      |\n+------+----------------------+------------+\n| 1    | Rice                 | 30         |\n| 2    | Oil                  | 15         |\n| 3    | Sugar                | 10         |\n+------+----------------------+------------+"
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> Viewing stock after the order shows Rice rising from 20 to 30. This verifies the invariant that seller reduction equals buyer increase — no stock is created or destroyed by the transfer."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.6 Retailer Order From Dealer"
+  },
+  {
+    "type": "code",
+    "text": "--- Place Order to Dealer ---\nYour Dealer: Dhaka Dealer\n\n--- Dealer Products (Available to Order) ---\nDealer: Dhaka Dealer\n\n+------+----------------------+------------+\n| ID   | Product Name         | Stock      |\n+------+----------------------+------------+\n| 1    | Rice                 | 30         |\n| 2    | Oil                  | 15         |\n| 3    | Sugar                | 10         |\n+------+----------------------+------------+\n\nEnter Product ID: 2\nEnter Quantity: 3\n\n==============================================\n  ORDER PLACED SUCCESSFULLY\n==============================================\n  Product  : Oil\n  Quantity : 3 units\n  From     : Dhaka Dealer\n  To       : Mirpur Shop\n=============================================="
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> Mirpur Shop is linked to Dhaka Dealer via retailer_dealer[0] = 1. The retailer can only order from that dealer. Ordering 3 units of Oil reduces dealer stock and increases retailer stock by the same amount."
+  },
+  {
+    "type": "h3",
+    "text": "3.2.7 Insufficient Stock Rejection"
+  },
+  {
+    "type": "code",
+    "text": "Enter Product ID: 1\nEnter Quantity: 500\n\n  ERROR: Not enough stock in company warehouse."
+  },
+  {
+    "type": "body",
+    "text": "<b>Discussion:</b> When the requested quantity exceeds company_stock, the transfer is aborted before any array is modified. Early returns after each failed check prevent partial updates and keep inventory consistent."
+  },
+  {
+    "type": "table",
+    "headers": [
+      "Test Case",
+      "Input",
+      "Expected Result",
+      "Observed"
+    ],
+    "rows": [
+      [
+        "Valid company login",
+        "Password 1122",
+        "Open company panel",
+        "Pass"
+      ],
+      [
+        "Invalid password",
+        "Wrong string",
+        "Error, return to menu",
+        "Pass"
+      ],
+      [
+        "Dealer orders Rice ×10",
+        "ID 1, qty 10",
+        "Company 100→90, Dealer 20→30",
+        "Pass"
+      ],
+      [
+        "Oversell attempt",
+        "qty 500",
+        "Error, no stock change",
+        "Pass"
+      ],
+      [
+        "Unknown product ID",
+        "ID 99",
+        "Product not found",
+        "Pass"
+      ],
+      [
+        "Retailer orders Oil ×3",
+        "ID 2, qty 3",
+        "Dealer↓, Retailer↑ by 3",
+        "Pass"
+      ],
+      [
+        "Invalid menu choice",
+        "choice 9",
+        "Error, menu repeats",
+        "Pass"
+      ]
+    ],
+    "caption": "Table 3.2: Manual test cases and results",
+    "col_widths": [
+      0.26,
+      0.18,
+      0.36,
+      0.2
+    ]
+  },
+  {
+    "type": "callout",
+    "text": "The most important invariant tested: after any order, the amount removed from the seller always equals the amount added to the buyer."
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Chapter 4"
+  },
+  {
+    "type": "h2",
+    "text": "Engineering Standards and Mapping"
+  },
+  {
+    "type": "body",
+    "text": "This chapter explores the engineering standards applied in developing the Distribution Management System. It also evaluates the project's broader impacts on society, environment, ethics, and its long-term sustainability."
+  },
+  {
+    "type": "h2",
+    "text": "4.1 Impact on Society, Environment and Sustainability"
+  },
+  {
+    "type": "body",
+    "text": "Implementing a digital distribution simulation modernises how learners and small operators reason about inventory flow. By replacing informal paper tallies with consistent computational checks, it improves operational clarity, reduces wasteful overselling mistakes, and promotes sustainable digital practices."
+  },
+  {
+    "type": "h3",
+    "text": "4.1.1 Impact on Life"
+  },
+  {
+    "type": "body",
+    "text": "The system improves day-to-day understanding for students, instructors, and small business operators who need a clear mental model of company–dealer–retailer stock movement. Automating validation reduces stress around manual arithmetic mistakes, and role-based panels make responsibilities easier to learn and demonstrate."
+  },
+  {
+    "type": "h3",
+    "text": "4.1.2 Impact on Society &amp; Environment"
+  },
+  {
+    "type": "body",
+    "text": "Societally, the project promotes digital literacy in supply-chain thinking using accessible tools (GCC and a terminal). Environmentally, practising inventory logic in software rather than on repeated paper worksheets supports a paperless learning workflow and reduces printed materials during labs and demonstrations."
+  },
+  {
+    "type": "h3",
+    "text": "4.1.3 Ethical Aspects"
+  },
+  {
+    "type": "body",
+    "text": "Ethical considerations include fair access control and honest reporting of stock. Password verification limits casual misuse of role panels during demonstrations. The transfer logic treats all products and partners by the same rules, avoiding biased handling. Students are encouraged to treat sample business data carefully when extending the system toward real deployments."
+  },
+  {
+    "type": "h3",
+    "text": "4.1.4 Sustainability Plan"
+  },
+  {
+    "type": "body",
+    "text": "The software is built for long-term classroom sustainability: six small modules, no third-party libraries, and constants that make capacity easy to retune. Future sustainability efforts include adding file I/O for persistence, pricing/payment fields, runtime registration of partners, and eventually migrating from in-memory arrays to a relational store while keeping the same transfer rules."
+  },
+  {
+    "type": "h2",
+    "text": "4.2 Project Management and Team Work"
+  },
+  {
+    "type": "body",
+    "text": "This project was executed as a group effort, where tasks were divided according to the individual strengths and capabilities of each team member. Programming, documentation, testing, sample-data preparation, and demonstration planning were coordinated so the Distribution Management System could be delivered as a complete lab project."
+  },
+  {
+    "type": "h3",
+    "text": "4.2.1 Team Member Contributions"
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Md Abir Hossain (ID: 261-15-001) — Lead Developer:</b> Designed the modular architecture and implemented the core C modules (data, display, company, dealer, retailer), including order validation and stock-transfer logic."
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Maliha Tasnim (ID: 261-15-338) — Documentation Lead:</b> Organised the engineering report structure, wrote chapter narratives to match the CSE114 lab format, and ensured consistency of figures, tables, and references."
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Anika Akter Mim (ID: 261-15-099) — Testing &amp; Quality:</b> Prepared manual test cases for valid and invalid orders, verified stock invariants after transfers, and recorded sample console sessions for the Results section."
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Touhidul Islam (ID: 261-15-377) — Design &amp; Flow:</b> Contributed to menu/UX flow design, flowchart specifications for architecture diagrams, and clarity of role-based panel interactions."
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Umma Amina (ID: 261-15-114) — Data &amp; Demo Preparation:</b> Helped define sample products, dealers, and retailers; prepared demonstration scripts for the live presentation before the course instructor."
+  },
+  {
+    "type": "h3",
+    "text": "4.2.2 Cost Analysis and Budget Required"
+  },
+  {
+    "type": "body",
+    "text": "Since this is a console-based program developed with open-source tools (GCC Compiler, VS Code / Cursor), the direct software licensing cost is zero. A hypothetical commercial budget for packaging a similar teaching or small-business tool includes:"
+  },
+  {
+    "type": "bullet",
+    "text": "Development Cost (Hypothetical Developer Hours): 12,000 BDT"
+  },
+  {
+    "type": "bullet",
+    "text": "Hardware Setup (Local desktop for operations): 40,000 BDT"
+  },
+  {
+    "type": "bullet",
+    "text": "Initial Training &amp; Deployment: 5,000 BDT"
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Total Primary Budget: 57,000 BDT</b>"
+  },
+  {
+    "type": "body",
+    "text": "<b>Alternate Budget:</b> Migrating from in-memory arrays to a cloud relational database for multi-user remote access would add approximately 1,000 BDT/month (~12,000 BDT/year). The primary budget is suitable for a single-machine classroom or shop demo; the alternate budget justifies recurring cost with durability and remote access."
+  },
+  {
+    "type": "h3",
+    "text": "4.2.3 Revenue Model"
+  },
+  {
+    "type": "body",
+    "text": "If commercialised as a teaching or micro-business toolkit, the software can follow a B2B one-time licensing model:"
+  },
+  {
+    "type": "bullet",
+    "text": "<b>License Fee:</b> Institutions or small distributors purchase the standalone package for a fixed fee of 10,000–15,000 BDT per site."
+  },
+  {
+    "type": "bullet",
+    "text": "<b>Maintenance Subscription:</b> Optional 2,000–3,000 BDT/year for support, sample-data updates, and feature patches."
+  },
+  {
+    "type": "h2",
+    "text": "4.3 Complex Engineering Problem"
+  },
+  {
+    "type": "h3",
+    "text": "4.3.1 Mapping of Program Outcome"
+  },
+  {
+    "type": "body",
+    "text": "In this section, a mapping of the problem and provided solution with targeted Program Outcomes (POs) is provided."
+  },
+  {
+    "type": "table",
+    "headers": [
+      "PO",
+      "Justification"
+    ],
+    "rows": [
+      [
+        "PO1",
+        "CO1 covers PO1 by applying fundamental engineering knowledge and C programming concepts. Loops, conditionals, arrays, and functions (e.g., order_from_company, verify_password, init_data) build the foundational structure of DMS."
+      ],
+      [
+        "PO2",
+        "CO2 covers PO2 by analysing distribution requirements and selecting appropriate constructs: parallel arrays, 2D stock matrices, multi-file modular design, and linear ID search with validation gates for realistic order handling."
+      ],
+      [
+        "PO9",
+        "CO3 covers PO9 through organised project execution — separating architecture, implementation, testing, and documentation — demonstrating coordination of engineering activities toward a complete deliverable."
+      ],
+      [
+        "PO10",
+        "CO4 covers PO10 by communicating complex inventory logic through a clear console UI, structured flowcharts, and this comprehensive engineering report suitable for both technical and non-technical audiences."
+      ]
+    ],
+    "caption": "Table 4.1: Justification of Program Outcomes",
+    "col_widths": [
+      0.12,
+      0.88
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "4.3.2 Complex Problem Solving"
+  },
+  {
+    "type": "bullet",
+    "text": "CO1 is linked to EP1 as developing DMS requires in-depth use of basic C constructs (loops, conditionals, functions). EP2 is relevant because the design balances simplicity for beginners with realistic validation rules for stock integrity."
+  },
+  {
+    "type": "bullet",
+    "text": "CO2 is linked to EP1 because multi-file modular design with shared extern data and 2D stock arrays requires first-principles understanding beyond single-file exercises. EP2 also applies when balancing immediate in-memory simplicity against future persistence and scalability needs."
+  },
+  {
+    "type": "table",
+    "caption": "Table 4.2: Mapping with complex problem solving",
+    "headers": [
+      "Attribute",
+      "Description",
+      "Mapped"
+    ],
+    "col_widths": [
+      0.18,
+      0.62,
+      0.2
+    ],
+    "rows": [
+      [
+        "EP1",
+        "Depth of Knowledge",
+        "Yes"
+      ],
+      [
+        "EP2",
+        "Range of Conflicting Requirements",
+        "Yes"
+      ],
+      [
+        "EP3",
+        "Depth of Analysis",
+        "—"
+      ],
+      [
+        "EP4",
+        "Familiarity of Issues",
+        "—"
+      ],
+      [
+        "EP5",
+        "Extent of Applicable Codes",
+        "—"
+      ],
+      [
+        "EP6",
+        "Extent of Stakeholder Involvement",
+        "—"
+      ],
+      [
+        "EP7",
+        "Inter-dependence",
+        "—"
+      ]
+    ]
+  },
+  {
+    "type": "h3",
+    "text": "4.3.3 Engineering Activities"
+  },
+  {
+    "type": "body",
+    "text": "<b>Mapping with EA1 (Range of resources):</b> Development required selecting open-source tools (GCC, a code editor) and standard C libraries (stdio.h, string.h). Inventory state uses process memory resources via global arrays, while console I/O resources present tables and collect orders. Modular headers manage the interaction surface between components."
+  },
+  {
+    "type": "table",
+    "caption": "Table 4.3: Mapping with engineering activities",
+    "headers": [
+      "Activity",
+      "Description",
+      "Mapped"
+    ],
+    "col_widths": [
+      0.18,
+      0.62,
+      0.2
+    ],
+    "rows": [
+      [
+        "EA1",
+        "Range of resources",
+        "Yes"
+      ],
+      [
+        "EA2",
+        "Level of Interaction",
+        "—"
+      ],
+      [
+        "EA3",
+        "Innovation",
+        "—"
+      ],
+      [
+        "EA4",
+        "Consequences for society and environment",
+        "—"
+      ],
+      [
+        "EA5",
+        "Familiarity",
+        "—"
+      ]
+    ]
+  },
+  {
+    "type": "pagebreak"
+  },
+  {
+    "type": "h1",
+    "text": "Chapter 5"
+  },
+  {
+    "type": "h2",
+    "text": "Conclusion"
+  },
+  {
+    "type": "body",
+    "text": "This chapter concludes the project by summarising the key features and technical achievements of the Distribution Management System. It also evaluates current limitations and outlines potential future enhancements."
+  },
+  {
+    "type": "h2",
+    "text": "5.1 Summary"
+  },
+  {
+    "type": "body",
+    "text": "The Distribution Management System was successfully developed as a console-based application in C. It models a realistic three-level supply chain in which stock flows from company to dealer to retailer under role-specific panels. The project integrates modular multi-file organisation, parallel-array data modelling, password-protected access, tabular console views, and guarded order transfers that preserve inventory integrity. Overall, DMS is a practical demonstration of fundamental programming constructs applied to a recognizable business workflow."
+  },
+  {
+    "type": "h2",
+    "text": "5.2 Limitation"
+  },
+  {
+    "type": "numbered",
+    "text": "Lack of Graphical Interface: The system relies entirely on a command-line console and has no GUI."
+  },
+  {
+    "type": "numbered",
+    "text": "No Persistent Storage: All stock lives in memory; changes are lost when the program exits."
+  },
+  {
+    "type": "numbered",
+    "text": "Fixed Catalogue: Products, dealers, and retailers are hardcoded in init_data() and cannot be added at runtime."
+  },
+  {
+    "type": "numbered",
+    "text": "No Pricing or Payments: Orders move quantities only; there is no cost calculation."
+  },
+  {
+    "type": "numbered",
+    "text": "Basic Input Handling: Non-numeric input to scanf can confuse menus because inputs are read as plain integers."
+  },
+  {
+    "type": "numbered",
+    "text": "Shared Password: All roles currently share one LOGIN_PASSWORD rather than per-user credentials."
+  },
+  {
+    "type": "h2",
+    "text": "5.3 Future Work"
+  },
+  {
+    "type": "numbered",
+    "text": "File I/O Persistence: Save and load stock with fopen/fprintf/fscanf so state survives between runs."
+  },
+  {
+    "type": "numbered",
+    "text": "Pricing Module: Add product prices and compute the total cost of each order."
+  },
+  {
+    "type": "numbered",
+    "text": "Runtime Registration: Allow adding products, dealers, and retailers while the program runs."
+  },
+  {
+    "type": "numbered",
+    "text": "Order History Log: Keep a simple transaction history for review and auditing."
+  },
+  {
+    "type": "numbered",
+    "text": "Low-Stock Warnings: Alert users when a product falls below a configurable threshold."
+  },
+  {
+    "type": "numbered",
+    "text": "GUI or Web Front-End: Upgrade usability while keeping the same transfer rules in the core logic."
+  },
+  {
+    "type": "bibliography",
+    "title": "References",
+    "items": [
+      {
+        "id": "1",
+        "text": "Kernighan, B. W., & Ritchie, D. M. (1988). The C Programming Language (2nd ed.). Prentice Hall."
+      },
+      {
+        "id": "2",
+        "text": "GNU Project. (2024). GCC, the GNU Compiler Collection — Online Documentation. https://gcc.gnu.org/onlinedocs/"
+      },
+      {
+        "id": "3",
+        "text": "TutorialsPoint. (2024). C Programming Tutorial — Multi-file Programs and Header Files. https://www.tutorialspoint.com/cprogramming/"
+      },
+      {
+        "id": "4",
+        "text": "Chopra, S., & Meindl, P. (2019). Supply Chain Management: Strategy, Planning, and Operation (7th ed.). Pearson."
+      },
+      {
+        "id": "5",
+        "text": "Daffodil International University, Department of CSE. CSE114: Programming and Problem Solving Laboratory — Mini Lab Project Report Guidelines."
+      }
+    ]
+  }
 ]

@@ -447,16 +447,13 @@ def _render_chart_png(item: dict, accent: str, dpi: int = 150) -> bytes | None:
 
 
 def _render_flowchart_png(item: dict, accent: str, dark: str,
-                           muted: str, dpi: int = 130) -> bytes | None:
+                           muted: str, dpi: int = 140) -> bytes | None:
     """
-    Render a top-to-bottom flowchart using matplotlib patches and arrows.
+    Render a clean top-to-bottom flowchart with side branches for decisions.
 
     Node schema:  {id, label, shape?}
         shape: "rect" (default) | "diamond" | "oval" | "parallelogram"
-
     Edge schema:  {from, to, label?}
-        Forward edges (to a later node) draw straight arrows.
-        Back edges (to an earlier node) draw a curved arc to the right.
     """
     try:
         import matplotlib
@@ -465,6 +462,7 @@ def _render_flowchart_png(item: dict, accent: str, dark: str,
         import matplotlib.patches as mpatch
         from matplotlib.patches import FancyBboxPatch
         import matplotlib.colors as mcolors
+        import io as _io
 
         nodes_list = item.get("nodes", [])
         edges      = item.get("edges", [])
@@ -472,31 +470,101 @@ def _render_flowchart_png(item: dict, accent: str, dark: str,
             return None
 
         nodes = {n["id"]: n for n in nodes_list}
-        order = {n["id"]: i for i, n in enumerate(nodes_list)}
+        ids = [n["id"] for n in nodes_list]
+        order = {nid: i for i, nid in enumerate(ids)}
 
-        n_nodes = len(nodes_list)
-        BOX_W   = 4.2
-        BOX_H   = 0.58
-        STEP_Y  = 1.25
-        CX      = 5.0
+        # Outgoing adjacency
+        outs = {nid: [] for nid in ids}
+        for e in edges:
+            if e.get("from") in outs and e.get("to") in nodes:
+                outs[e["from"]].append(e)
 
-        fig_h = max(3.5, n_nodes * STEP_Y + 0.8)
-        fig, ax = plt.subplots(figsize=(6, fig_h), dpi=dpi)
+        # Layout: main column + optional right column for branch "No"/secondary
+        # Detect diamond with exactly 2 outs → primary (first) stays on spine,
+        # secondary placed to the right at mid-gap, then rejoins later successors.
+        CX = 2.95
+        RX = 7.15
+        BOX_W = 2.85
+        BOX_H = 0.62
+        GAP = 1.15
+
+        # Vertical positions along spine order
+        y_of = {}
+        y = 0.0
+        for nid in ids:
+            shape = nodes[nid].get("shape", "rect")
+            h = 0.95 if shape == "diamond" else (0.70 if shape in ("oval", "terminal") else BOX_H)
+            y_of[nid] = y
+            y += h / 2 + GAP + h / 2
+        total_h = y + 0.3
+
+        # Position map
+        pos = {nid: (CX, y_of[nid]) for nid in ids}
+
+        # Place secondary branch targets to the right
+        # For diamond with 2 outs: keep first edge target on spine; second to the right
+        # at y halfway between diamond and first target (or at first target y if needed)
+        side_nodes = set()
+        for nid in ids:
+            if nodes[nid].get("shape") != "diamond":
+                continue
+            outs_e = outs.get(nid, [])
+            if len(outs_e) < 2:
+                continue
+            # Prefer label heuristics: Yes/Pass/Valid/1-3 = primary (down)
+            def score(e):
+                lbl = (e.get("label") or "").lower()
+                if any(k in lbl for k in ("yes", "pass", "valid", "ok", "1-3", "true")):
+                    return 0
+                if any(k in lbl for k in ("no", "fail", "invalid", "error", "0", "false")):
+                    return 1
+                return 0 if outs_e.index(e) == 0 else 1
+            ordered = sorted(outs_e, key=score)
+            primary = ordered[0].get("to")
+            secondary = ordered[1].get("to")
+            if secondary and secondary in pos:
+                # put secondary to the right at same y as primary (or diamond+gap)
+                py = pos[primary][1] if primary in pos else pos[nid][1] + GAP
+                pos[secondary] = (RX, py)
+                side_nodes.add(secondary)
+
+        fig_h = max(3.4, total_h * 0.88 + 0.5)
+        fig_w = 9.6 if side_nodes else 6.6
+        fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=dpi)
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
-        ax.set_xlim(0, 10)
-        ax.set_ylim(-0.6, n_nodes * STEP_Y + 0.2)
+        ax.set_xlim(0.0, fig_w)
+        ax.set_ylim(-0.45, total_h + 0.15)
         ax.invert_yaxis()
         ax.axis("off")
 
-        acc_rgb   = mcolors.to_rgb(accent)
-        dark_rgb  = mcolors.to_rgb(dark)
+        acc_rgb = mcolors.to_rgb(accent)
+        dark_rgb = mcolors.to_rgb(dark)
         muted_rgb = mcolors.to_rgb(muted)
 
-        # Node positions (cx, cy) — preserves input order
-        pos = {nid: (CX, i * STEP_Y) for nid, i in order.items()}
+        def node_half_h(nid):
+            shape = nodes[nid].get("shape", "rect")
+            if shape == "diamond":
+                return 0.55
+            if shape in ("oval", "terminal"):
+                return 0.38
+            return BOX_H / 2
 
-        # ── Draw edges (behind nodes) ──────────────────────────────────────────
+        def wrap_label(label, maxlen=18):
+            words = str(label).split()
+            lines, cur = [], ""
+            for w in words:
+                trial = (cur + " " + w).strip()
+                if len(trial) > maxlen and cur:
+                    lines.append(cur)
+                    cur = w
+                else:
+                    cur = trial
+            if cur:
+                lines.append(cur)
+            return "\n".join(lines)
+
+        # Draw edges first
         for edge in edges:
             src, dst = edge.get("from"), edge.get("to")
             if src not in pos or dst not in pos:
@@ -505,87 +573,108 @@ def _render_flowchart_png(item: dict, accent: str, dark: str,
             x2, y2 = pos[dst]
             lbl = edge.get("label", "")
 
-            src_shape = nodes.get(src, {}).get("shape", "rect")
-            dst_shape = nodes.get(dst, {}).get("shape", "rect")
-            dy_src = BOX_H * (0.80 if src_shape == "diamond" else 0.50)
-            dy_dst = BOX_H * (0.80 if dst_shape == "diamond" else 0.50)
+            # back-edge (upward): arc to the left
+            if y2 < y1 - 0.05:
+                ax.annotate(
+                    "",
+                    xy=(x2 - BOX_W * 0.35, y2),
+                    xytext=(x1 - BOX_W * 0.35, y1),
+                    arrowprops=dict(
+                        arrowstyle="-|>", color=muted_rgb, lw=1.05,
+                        mutation_scale=11, connectionstyle="arc3,rad=-0.45",
+                    ),
+                )
+                if lbl:
+                    ax.text(min(x1, x2) - BOX_W * 0.55, (y1 + y2) / 2, lbl,
+                            fontsize=8, color=accent, ha="right", va="center",
+                            fontweight="bold")
+                continue
 
-            y_start = y1 + dy_src
-            y_end   = y2 - dy_dst
+            y_start = y1 + node_half_h(src) + 0.02
+            y_end = y2 - node_half_h(dst) - 0.02
 
-            # Forward edge: straight; back-edge: curved arc
-            conn = "arc3,rad=0.0" if y_end > y_start + 0.01 else "arc3,rad=0.42"
+            # side-to-side / branch
+            if abs(x1 - x2) > 0.4:
+                # route: down a bit from src, across, down into dst
+                mid_y = y1 + (y2 - y1) * 0.35 if y2 > y1 else y2
+                ax.plot([x1, x1, x2, x2], [y_start, mid_y, mid_y, y_end],
+                        color=muted_rgb, lw=1.05, solid_capstyle="round")
+                ax.annotate(
+                    "",
+                    xy=(x2, y_end),
+                    xytext=(x2, y_end - 0.01),
+                    arrowprops=dict(arrowstyle="-|>", color=muted_rgb,
+                                    lw=1.05, mutation_scale=11),
+                )
+                if lbl:
+                    ax.text((x1 + x2) / 2, mid_y - 0.12, lbl,
+                            fontsize=8, color=accent, ha="center", va="bottom",
+                            fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.15", fc="white",
+                                      ec="none", alpha=0.9))
+            else:
+                ax.annotate(
+                    "",
+                    xy=(x2, y_end),
+                    xytext=(x1, y_start),
+                    arrowprops=dict(
+                        arrowstyle="-|>", color=muted_rgb, lw=1.05,
+                        mutation_scale=11, connectionstyle="arc3,rad=0.0",
+                    ),
+                )
+                if lbl:
+                    ax.text(x1 + 0.35, (y_start + y_end) / 2, lbl,
+                            fontsize=8, color=accent, ha="left", va="center",
+                            fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.12", fc="white",
+                                      ec="none", alpha=0.9))
 
-            ax.annotate("",
-                xy=(x2, y_end), xytext=(x1, y_start),
-                arrowprops=dict(
-                    arrowstyle="-|>", color=muted_rgb,
-                    lw=1.0, mutation_scale=10,
-                    connectionstyle=conn,
-                ),
-            )
-            if lbl:
-                mid_x = (x1 + x2) / 2 + 0.28
-                mid_y = (y_start + y_end) / 2
-                ax.text(mid_x, mid_y, lbl, fontsize=7.5,
-                        color=muted_rgb, ha="left", va="center")
-
-        # ── Draw nodes (in front of edges) ────────────────────────────────────
+        # Draw nodes
         for nid, (cx, cy) in pos.items():
-            node  = nodes[nid]
+            node = nodes[nid]
             shape = node.get("shape", "rect")
-            label = node.get("label", nid)
-            left  = cx - BOX_W / 2
-            bot   = cy - BOX_H / 2
+            label = wrap_label(node.get("label", nid))
+            left = cx - BOX_W / 2
+            bot = cy - BOX_H / 2
 
             if shape in ("oval", "terminal"):
-                el = mpatch.Ellipse(
-                    (cx, cy), BOX_W * 0.78, BOX_H * 1.15,
-                    facecolor=acc_rgb, edgecolor=acc_rgb, linewidth=0,
+                el = mpatch.FancyBboxPatch(
+                    (cx - BOX_W * 0.40, cy - 0.30), BOX_W * 0.80, 0.60,
+                    boxstyle="round,pad=0.02,rounding_size=0.30",
+                    facecolor=acc_rgb, edgecolor=acc_rgb, linewidth=1.0,
+                    mutation_aspect=None, zorder=3,
                 )
                 ax.add_patch(el)
                 ax.text(cx, cy, label, ha="center", va="center",
-                        fontsize=8.5, fontweight="bold", color="white")
+                        fontsize=8.5, fontweight="bold", color="white",
+                        linespacing=1.15, zorder=4)
 
             elif shape == "diamond":
-                d = BOX_W * 0.44
+                d = 0.78
                 diamond = plt.Polygon(
-                    [(cx, cy - d * 0.72), (cx + d, cy),
-                     (cx, cy + d * 0.72), (cx - d, cy)],
-                    facecolor="#FFFCF0",
-                    edgecolor=accent, linewidth=1.2,
+                    [(cx, cy - d), (cx + d * 1.15, cy),
+                     (cx, cy + d), (cx - d * 1.15, cy)],
+                    facecolor="#F7F1E3",
+                    edgecolor=accent, linewidth=1.35, zorder=3, clip_on=False,
                 )
                 ax.add_patch(diamond)
                 ax.text(cx, cy, label, ha="center", va="center",
-                        fontsize=8, color=dark_rgb)
+                        fontsize=8, color=dark_rgb, zorder=4, linespacing=1.1)
 
-            elif shape == "parallelogram":
-                skew = 0.30
-                para = plt.Polygon(
-                    [(left + skew, bot), (left + BOX_W + skew, bot),
-                     (left + BOX_W, bot + BOX_H), (left, bot + BOX_H)],
-                    facecolor="white",
-                    edgecolor=accent, linewidth=1.2,
-                )
-                ax.add_patch(para)
-                ax.text(cx, cy, label, ha="center", va="center",
-                        fontsize=8.5, color=dark_rgb)
-
-            else:   # rect (default)
+            else:
                 rect = FancyBboxPatch(
                     (left, bot), BOX_W, BOX_H,
                     boxstyle="round,pad=0.04",
                     facecolor="white",
-                    edgecolor=accent, linewidth=1.2,
+                    edgecolor=accent, linewidth=1.35, zorder=3, clip_on=False,
                 )
                 ax.add_patch(rect)
                 ax.text(cx, cy, label, ha="center", va="center",
-                        fontsize=8.5, color=dark_rgb)
+                        fontsize=8.5, color=dark_rgb, zorder=4, linespacing=1.15)
 
-        plt.tight_layout(pad=0.2)
-        buf = io.BytesIO()
+        buf = _io.BytesIO()
         fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight",
-                    facecolor="white", pad_inches=0.08)
+                    facecolor="white", pad_inches=0.18)
         plt.close(fig)
         buf.seek(0)
         return buf.read()
@@ -593,23 +682,6 @@ def _render_flowchart_png(item: dict, accent: str, dark: str,
         return None
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Block renderers
-#
-# All functions share the same signature:
-#   _add_XXX(story: list, item: dict, ctx: dict)
-#
-# ctx keys:
-#   tokens    dict    design tokens from palette.py
-#   styles    dict    ParagraphStyle objects from make_styles()
-#   usable_w  float   usable page width in points
-#   acc       str     accent hex color
-#   acc_lt    str     light accent hex color
-#   mu        str     muted hex color
-#   dark      str     dark hex color
-#   figure_n  int     auto-incrementing figure counter (mutable)
-#   numbered_n int    auto-incrementing list counter (mutable)
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _add_heading(story: list, item: dict, ctx: dict, level: int):
     key  = f"h{level}"
@@ -849,11 +921,17 @@ def _add_chart(story: list, item: dict, ctx: dict):
     raw_cap = item.get("caption", "")
     use_fig = item.get("figure", True)
     if raw_cap or use_fig:
-        ctx["figure_n"] += 1
-        prefix  = f"Figure {ctx['figure_n']}: " if use_fig else ""
+        # Avoid "Figure N: Fig 2.1:" doubling when caption already starts with Fig
+        cap = raw_cap.strip()
+        already = cap.lower().startswith("fig") or cap.lower().startswith("figure")
+        if use_fig and not already:
+            ctx["figure_n"] += 1
+            cap = f"Figure {ctx['figure_n']}: {cap}".strip()
+        elif use_fig and already:
+            ctx["figure_n"] += 1  # keep numbering in sync
         story.append(Spacer(1, 4))
-        story.append(Paragraph(prefix + raw_cap, ctx["styles"]["caption"]))
-    story.append(Spacer(1, 10))
+        story.append(Paragraph(cap, ctx["styles"]["caption"]))
+    story.append(Spacer(1, 8))
 
 
 def _add_flowchart(story: list, item: dict, ctx: dict):
@@ -877,7 +955,7 @@ def _add_flowchart(story: list, item: dict, ctx: dict):
         ))
         return
 
-    img = _image_from_bytes(png, uw, max_frac=0.78)
+    img = _image_from_bytes(png, uw, max_frac=0.52)
     story.append(Spacer(1, 8))
     row_tbl = Table([[img]], colWidths=[uw])
     row_tbl.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
@@ -886,11 +964,17 @@ def _add_flowchart(story: list, item: dict, ctx: dict):
     raw_cap = item.get("caption", "")
     use_fig = item.get("figure", True)
     if raw_cap or use_fig:
-        ctx["figure_n"] += 1
-        prefix  = f"Figure {ctx['figure_n']}: " if use_fig else ""
+        # Avoid "Figure N: Fig 2.1:" doubling when caption already starts with Fig
+        cap = raw_cap.strip()
+        already = cap.lower().startswith("fig") or cap.lower().startswith("figure")
+        if use_fig and not already:
+            ctx["figure_n"] += 1
+            cap = f"Figure {ctx['figure_n']}: {cap}".strip()
+        elif use_fig and already:
+            ctx["figure_n"] += 1  # keep numbering in sync
         story.append(Spacer(1, 4))
-        story.append(Paragraph(prefix + raw_cap, ctx["styles"]["caption"]))
-    story.append(Spacer(1, 10))
+        story.append(Paragraph(cap, ctx["styles"]["caption"]))
+    story.append(Spacer(1, 8))
 
 
 def _add_bibliography(story: list, item: dict, ctx: dict):

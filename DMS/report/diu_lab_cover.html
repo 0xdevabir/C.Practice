@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>DIU Lab Report Cover</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 794px;
+    height: 1123px;
+    background: #ffffff;
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .page {
+    position: relative;
+    width: 794px;
+    height: 1123px;
+    padding: 48px 58px 36px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .border {
+    position: absolute;
+    inset: 26px;
+    border: 1.25px solid #000;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .watermark {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    width: 420px;
+    height: 420px;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .content { position: relative; z-index: 2; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 4px;
+  }
+  .logo {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    object-position: center center;
+    flex-shrink: 0;
+    display: block;
+  }
+  .wordmark {
+    line-height: 0.98;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .wordmark .d {
+    display: block;
+    font-size: 42px;
+    font-weight: 800;
+    color: #1a4b96;
+    letter-spacing: 0.2px;
+  }
+  .wordmark .i {
+    display: block;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 25px;
+    font-style: italic;
+    font-weight: 400;
+    color: #8a8a8a;
+    margin: 3px 0 2px;
+  }
+  .wordmark .u {
+    display: block;
+    font-size: 40px;
+    font-weight: 800;
+    color: #2b9e3f;
+  }
+
+  .lab-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    margin: 14px 0 22px;
+  }
+
+  .row {
+    font-size: 16px;
+    line-height: 1.85;
+  }
+  .row b { font-weight: 700; }
+
+  .block { margin-top: 20px; }
+  .block-title {
+    font-size: 16.5px;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    margin-bottom: 6px;
+  }
+  .indent { margin-left: 42px; }
+
+  /* Compact classic team list */
+  .team {
+    width: 100%;
+    max-width: 520px;
+    border-collapse: collapse;
+    margin: 4px 0 8px;
+    font-size: 15px;
+  }
+  .team th {
+    text-align: left;
+    font-weight: 700;
+    padding: 4px 0;
+    border-bottom: 1px solid #000;
+  }
+  .team td {
+    padding: 3px 0;
+    vertical-align: top;
+  }
+  .team td.id {
+    width: 130px;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="border"></div>
+    <img class="watermark" src="assets/diu_watermark.png" alt="" />
+
+    <div class="content">
+      <div class="header">
+        <img class="logo" src="assets/diu_logo.jpg" alt="DIU Logo" />
+        <div class="wordmark">
+          <span class="d">Daffodil</span>
+          <span class="i">International</span>
+          <span class="u">University</span>
+        </div>
+      </div>
+
+      <div class="lab-title">Lab Report</div>
+
+      <div class="row"><b>Course Code:</b> CSE114</div>
+      <div class="row"><b>Course Title:</b> Programming and Problem Solving Laboratory</div>
+      <div class="row"><b>Experiment No:</b> Mini Lab Project</div>
+      <div class="row"><b>Experiment Name:</b> Distribution Management System</div>
+
+      <div class="block">
+        <div class="block-title">Submitted To:</div>
+        <div class="indent">
+          <div class="row"><b>Name:</b> Md. Ashraful Islam Talukder</div>
+          <div class="row"><b>Designation:</b> Lecturer</div>
+          <div class="row"><b>Department:</b> Computer Science and Engineering</div>
+          <div class="row">Daffodil International University.</div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-title">Submitted By:</div>
+        <div class="indent">
+          <table class="team">
+            <thead>
+              <tr><th>Name</th><th>ID</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Maliha Tasnim</td><td class="id">261-15-338</td></tr>
+              <tr><td>Anika Akter Mim</td><td class="id">261-15-099</td></tr>
+              <tr><td>Touhidul Islam</td><td class="id">261-15-377</td></tr>
+              <tr><td>Umma Amina</td><td class="id">261-15-114</td></tr>
+              <tr><td>Md Abir Hossain</td><td class="id">261-15-001</td></tr>
+            </tbody>
+          </table>
+          <div class="row"><b>Section:</b> —</div>
+          <div class="row"><b>Semester:</b> Summer 2026</div>
+          <div class="row"><b>Department:</b> Computer Science and Engineering</div>
+          <div class="row">Daffodil International University.</div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-title">Submission Date:</div>
+        <div class="indent">
+          <div class="row">August 08, 2026</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
