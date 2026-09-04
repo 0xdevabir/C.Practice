@@ -1,98 +1,135 @@
 #include "hospital.h"
 
 void addMedicine(void) {
-    if (medCount >= MAX_MEDS) { printf("Medicine list full.\n"); return; }
     Medicine m;
+
+    if (medCount >= MAX_MEDS) {
+        printf("Medicine list full.\n");
+        return;
+    }
+
     memset(&m, 0, sizeof(m));
     m.id = meta.nextMedId++;
-    printf("Auto Med ID: %d\n", m.id);
+    printf("Medicine id: %d\n", m.id);
+
     printf("Name: ");
     readLine(m.name, MAX_NAME);
     printf("Category: ");
     readLine(m.category, 30);
+
     if (!readDouble("Price: ", &m.price) || m.price < 0) {
-        printf("Invalid price.\n"); return;
+        printf("Bad price.\n");
+        return;
     }
-    if (!readInt("Stock qty: ", &m.stock) || m.stock < 0) {
-        printf("Invalid stock.\n"); return;
+    if (!readInt("Stock: ", &m.stock) || m.stock < 0) {
+        printf("Bad stock.\n");
+        return;
     }
-    if (!readInt("Reorder level: ", &m.reorderLevel) || m.reorderLevel < 0) {
+    if (!readInt("Reorder when below: ", &m.reorderLevel) || m.reorderLevel < 0)
         m.reorderLevel = 10;
-    }
+
     medicines[medCount++] = m;
-    printf("Medicine added.\n");
+    printf("Added.\n");
 }
 
 void listMedicines(void) {
-    printf("\n%-6s %-24s %-14s %-8s %-8s %-8s\n",
-           "ID", "Name", "Category", "Price", "Stock", "Reorder");
-    printf("------------------------------------------------------------------------\n");
-    for (int i = 0; i < medCount; i++) {
-        Medicine *m = &medicines[i];
-        printf("%-6d %-24s %-14s %-8.0f %-8d %-8d%s\n",
-               m->id, m->name, m->category, m->price, m->stock, m->reorderLevel,
-               m->stock <= m->reorderLevel ? " *LOW*" : "");
+    int i;
+    printf("\nID  Name                     Cat            Price  Stock\n");
+    for (i = 0; i < medCount; i++) {
+        printf("%-3d %-24s %-14s %-6.0f %-5d",
+               medicines[i].id, medicines[i].name, medicines[i].category,
+               medicines[i].price, medicines[i].stock);
+        if (medicines[i].stock <= medicines[i].reorderLevel)
+            printf("  << low");
+        printf("\n");
     }
 }
 
 void updateMedicineStock(void) {
-    int id, qty;
-    if (!readInt("Medicine ID: ", &id)) return;
-    int mi = findMedIndex(id);
-    if (mi < 0) { printf("Not found.\n"); return; }
-    printf("1.Add stock  2.Set stock  3.Update price\n");
-    int c;
-    if (!readInt("Choice: ", &c)) return;
-    if (c == 1) {
-        if (!readInt("Quantity to add: ", &qty) || qty <= 0) {
-            printf("Invalid.\n"); return;
+    int id, mi, ch, qty;
+    double price;
+
+    if (!readInt("Medicine id: ", &id))
+        return;
+    mi = findMedIndex(id);
+    if (mi < 0) {
+        printf("Not found.\n");
+        return;
+    }
+
+    printf("1. Add to stock\n");
+    printf("2. Set stock number\n");
+    printf("3. Change price\n");
+    if (!readInt("Choice: ", &ch))
+        return;
+
+    if (ch == 1) {
+        if (!readInt("How many to add: ", &qty) || qty <= 0) {
+            printf("Invalid.\n");
+            return;
         }
         medicines[mi].stock += qty;
-    } else if (c == 2) {
+    } else if (ch == 2) {
         if (!readInt("New stock: ", &qty) || qty < 0) {
-            printf("Invalid.\n"); return;
+            printf("Invalid.\n");
+            return;
         }
         medicines[mi].stock = qty;
-    } else if (c == 3) {
-        double price;
+    } else if (ch == 3) {
         if (!readDouble("New price: ", &price) || price < 0) {
-            printf("Invalid.\n"); return;
+            printf("Invalid.\n");
+            return;
         }
         medicines[mi].price = price;
     } else {
         printf("Invalid.\n");
         return;
     }
-    printf("Updated. Stock=%d Price=%.0f\n", medicines[mi].stock, medicines[mi].price);
+
+    printf("Stock now %d, price %.0f\n", medicines[mi].stock, medicines[mi].price);
 }
 
 void prescribeMedicine(void) {
+    int pid, mid, qty, pi, mi;
+    Prescription pr;
+
     if (prescCount >= MAX_PRESCRIPTIONS) {
         printf("Prescription log full.\n");
         return;
     }
-    int pid, mid, qty;
-    if (!readInt("Patient ID: ", &pid)) return;
-    int pi = findPatientIndex(pid);
-    if (pi < 0) { printf("Patient not found.\n"); return; }
-    if (strcmp(patients[pi].status, "Discharged") == 0) {
-        printf("Patient discharged.\n");
+
+    if (!readInt("Patient id: ", &pid))
+        return;
+    pi = findPatientIndex(pid);
+    if (pi < 0) {
+        printf("Patient not found.\n");
         return;
     }
+    if (strcmp(patients[pi].status, "Discharged") == 0) {
+        printf("Patient is discharged.\n");
+        return;
+    }
+
     listMedicines();
-    if (!readInt("Medicine ID: ", &mid)) return;
-    int mi = findMedIndex(mid);
-    if (mi < 0) { printf("Medicine not found.\n"); return; }
+    if (!readInt("Medicine id: ", &mid))
+        return;
+    mi = findMedIndex(mid);
+    if (mi < 0) {
+        printf("Medicine not found.\n");
+        return;
+    }
+
     if (!readInt("Quantity: ", &qty) || qty <= 0) {
-        printf("Invalid quantity.\n");
+        printf("Bad quantity.\n");
         return;
     }
     if (medicines[mi].stock < qty) {
-        printf("Insufficient stock (have %d).\n", medicines[mi].stock);
+        printf("Only %d left in stock.\n", medicines[mi].stock);
         return;
     }
+
     medicines[mi].stock -= qty;
-    Prescription pr;
+
     pr.id = meta.nextPrescId++;
     pr.patientId = pid;
     pr.medicineId = mid;
@@ -105,42 +142,43 @@ void prescribeMedicine(void) {
     patients[pi].totalBill = patients[pi].roomCharges + patients[pi].doctorFee +
                              patients[pi].medicineCharges + patients[pi].labCharges -
                              patients[pi].discount;
-    printf("Prescribed %s x%d = Tk. %.0f\n", medicines[mi].name, qty, pr.amount);
+
+    printf("Given %s x%d = %.0f Tk\n", medicines[mi].name, qty, pr.amount);
 }
 
 void lowStockAlert(void) {
-    printf("\n=== LOW STOCK ALERT ===\n");
-    int found = 0;
-    for (int i = 0; i < medCount; i++) {
+    int i, found = 0;
+    printf("\nLow stock:\n");
+    for (i = 0; i < medCount; i++) {
         if (medicines[i].stock <= medicines[i].reorderLevel) {
-            printf("ID %d | %s | stock %d (reorder %d)\n",
-                   medicines[i].id, medicines[i].name,
+            printf("- %s (id %d): %d left, reorder at %d\n",
+                   medicines[i].name, medicines[i].id,
                    medicines[i].stock, medicines[i].reorderLevel);
             found = 1;
         }
     }
-    if (!found) printf("All medicines above reorder level.\n");
+    if (!found)
+        printf("Everything looks fine.\n");
 }
 
 void pharmacyMenu(void) {
-    int c;
+    int ch;
     while (1) {
-        printf("\n=== PHARMACY ===\n");
-        printf("1. Add Medicine\n");
-        printf("2. List Medicines\n");
-        printf("3. Update Stock / Price\n");
-        printf("4. Prescribe to Patient\n");
-        printf("5. Low Stock Alert\n");
+        printf("\n-- Pharmacy --\n");
+        printf("1. Add medicine\n");
+        printf("2. List medicines\n");
+        printf("3. Update stock/price\n");
+        printf("4. Prescribe\n");
+        printf("5. Low stock check\n");
         printf("6. Back\n");
-        if (!readInt("Choice: ", &c)) continue;
-        switch (c) {
-            case 1: addMedicine(); break;
-            case 2: listMedicines(); break;
-            case 3: updateMedicineStock(); break;
-            case 4: prescribeMedicine(); break;
-            case 5: lowStockAlert(); break;
-            case 6: return;
-            default: printf("Invalid.\n");
-        }
+        if (!readInt("Choice: ", &ch))
+            continue;
+        if (ch == 1) addMedicine();
+        else if (ch == 2) listMedicines();
+        else if (ch == 3) updateMedicineStock();
+        else if (ch == 4) prescribeMedicine();
+        else if (ch == 5) lowStockAlert();
+        else if (ch == 6) return;
+        else printf("Invalid.\n");
     }
 }
