@@ -1,19 +1,30 @@
-#include<stdio.h>
-int main(){
+#include <stdio.h>
 
-    int n, total=0, avg, a[999][999];
+struct movie {
+	int id;
+	char name[100];
+	int duration;
+	char language[100];
+};
 
-    scanf("%d", &n);
+int main(void) {
+	struct movie movies[5];
+	int minimumDuration;
 
-    for(int i=0;i<n;i++){
-        for(int j=0;j<n;j++){
-            scanf("%d", &a[i][j]);
-            total += a[i][j];
-        }
-    }
+	for (int i = 0; i < 5; i++) {
+		scanf("%d %99s %d %99s", &movies[i].id, movies[i].name,
+			  &movies[i].duration, movies[i].language);
 
-    avg = total/(n*n);
+		if (i == 0 || movies[i].duration < minimumDuration) {
+			minimumDuration = movies[i].duration;
+		}
+	}
 
-    printf("%d", avg);
-    return 0;
+	for (int i = 0; i < 5; i++) {
+		if (movies[i].duration == minimumDuration) {
+			printf("%s\n", movies[i].name);
+		}
+	}
+
+	return 0;
 }
