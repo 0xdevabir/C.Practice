@@ -1,60 +1,74 @@
 #include "hospital.h"
 
-static void printPatient(const Patient *p) {
-    printf("\n----------------------------------------\n");
-    printf("ID: %d | %s | Age %d | %s | Blood %s\n",
-           p->id, p->name, p->age, p->gender, p->bloodGroup);
-    printf("Phone: %s | Emergency: %s\n", p->phone, p->emergencyContact);
+static void showPatient(Patient *p) {
+    printf("\n--- Patient details ---\n");
+    printf("ID: %d\n", p->id);
+    printf("Name: %s\n", p->name);
+    printf("Age: %d\n", p->age);
+    printf("Gender: %s\n", p->gender);
+    printf("Blood group: %s\n", p->bloodGroup);
+    printf("Phone: %s\n", p->phone);
+    printf("Emergency contact: %s\n", p->emergencyContact);
     printf("Address: %s\n", p->address);
     printf("Condition: %s\n", p->condition);
-    printf("Doctor ID: %d | Room: %d | Days: %d\n",
-           p->doctorId, p->roomNumber, p->daysAdmitted);
-    printf("Status: %s | Emergency: %s\n",
-           p->status, p->isEmergency ? "YES" : "No");
-    printf("Admit: %s | Discharge: %s\n",
-           p->admitDate, p->dischargeDate[0] ? p->dischargeDate : "-");
-    printf("Bill so far: Room %.0f + Doctor %.0f + Meds %.0f + Lab %.0f - Disc %.0f = %.0f\n",
-           p->roomCharges, p->doctorFee, p->medicineCharges, p->labCharges,
-           p->discount, p->totalBill);
-    printf("----------------------------------------\n");
+    printf("Doctor id: %d\n", p->doctorId);
+    printf("Room: %d\n", p->roomNumber);
+    printf("Days admitted: %d\n", p->daysAdmitted);
+    printf("Status: %s\n", p->status);
+    if (p->isEmergency)
+        printf("Emergency case: yes\n");
+    printf("Admit date: %s\n", p->admitDate);
+    if (p->dischargeDate[0] != '\0')
+        printf("Discharge date: %s\n", p->dischargeDate);
+    printf("Bill so far: %.2f Tk\n", p->totalBill);
+    printf("-----------------------\n");
 }
 
-static double calcRunningTotal(Patient *p) {
-    p->totalBill = p->roomCharges + p->doctorFee + p->medicineCharges +
-                   p->labCharges - p->discount;
-    if (p->totalBill < 0) p->totalBill = 0;
-    return p->totalBill;
+static void updateTotal(Patient *p) {
+    p->totalBill = p->roomCharges + p->doctorFee + p->medicineCharges + p->labCharges - p->discount;
+    if (p->totalBill < 0)
+        p->totalBill = 0;
 }
 
 void registerPatient(void) {
-    if (patientCount >= MAX_PATIENTS) {
-        printf("Patient capacity full.\n");
-        return;
-    }
     Patient p;
-    memset(&p, 0, sizeof(p));
-    p.id = meta.nextPatientId++;
+    int ok;
 
-    printf("Auto Patient ID: %d\n", p.id);
-    printf("Enter Name: ");
-    readLine(p.name, MAX_NAME);
-    if (!p.name[0]) { printf("Name required.\n"); return; }
-
-    if (!readInt("Enter Age: ", &p.age) || p.age <= 0 || p.age > 120) {
-        printf("Invalid age.\n");
+    if (patientCount >= MAX_PATIENTS) {
+        printf("Sorry, patient list is full.\n");
         return;
     }
-    printf("Enter Gender (Male/Female/Other): ");
+
+    memset(&p, 0, sizeof(p));
+    p.id = meta.nextPatientId;
+    meta.nextPatientId++;
+
+    printf("New patient id will be: %d\n", p.id);
+
+    printf("Name: ");
+    readLine(p.name, MAX_NAME);
+    if (strlen(p.name) == 0) {
+        printf("Name is required.\n");
+        return;
+    }
+
+    ok = readInt("Age: ", &p.age);
+    if (!ok || p.age <= 0 || p.age > 120) {
+        printf("Bad age.\n");
+        return;
+    }
+
+    printf("Gender: ");
     readLine(p.gender, 12);
-    printf("Enter Blood Group (e.g. B+): ");
+    printf("Blood group: ");
     readLine(p.bloodGroup, 8);
-    printf("Enter Phone: ");
+    printf("Phone: ");
     readLine(p.phone, MAX_PHONE);
-    printf("Enter Emergency Contact: ");
+    printf("Emergency contact: ");
     readLine(p.emergencyContact, MAX_NAME);
-    printf("Enter Address: ");
+    printf("Address: ");
     readLine(p.address, MAX_TEXT);
-    printf("Enter Medical Condition: ");
+    printf("Condition: ");
     readLine(p.condition, MAX_CONDITION);
 
     p.doctorId = -1;
@@ -64,227 +78,303 @@ void registerPatient(void) {
     strcpy(p.status, "Admitted");
     todayDate(p.admitDate, MAX_DATE);
     p.dischargeDate[0] = '\0';
-    calcRunningTotal(&p);
+    updateTotal(&p);
 
-    patients[patientCount++] = p;
-    printf("Patient registered. ID=%d Status=Admitted Date=%s\n",
-           p.id, p.admitDate);
+    patients[patientCount] = p;
+    patientCount++;
+
+    printf("Patient added. Status set to Admitted.\n");
 }
 
 void emergencyAdmit(void) {
+    Patient p;
+    Room *r;
+    int i, docIndex = -1;
+
     if (patientCount >= MAX_PATIENTS) {
-        printf("Patient capacity full.\n");
+        printf("Patient list full.\n");
         return;
     }
-    Patient p;
+
     memset(&p, 0, sizeof(p));
     p.id = meta.nextPatientId++;
-    printf("EMERGENCY ADMISSION — Auto ID: %d\n", p.id);
+    printf("\n*** Emergency admission ***\n");
+    printf("Patient id: %d\n", p.id);
 
-    printf("Enter Name (or Unknown): ");
+    printf("Name (or Unknown): ");
     readLine(p.name, MAX_NAME);
-    if (!p.name[0]) strcpy(p.name, "Unknown");
+    if (p.name[0] == '\0')
+        strcpy(p.name, "Unknown");
 
-    printf("Enter Age (0 if unknown): ");
-    if (scanf("%d", &p.age) != 1) p.age = 0;
+    printf("Age (0 if unknown): ");
+    if (scanf("%d", &p.age) != 1)
+        p.age = 0;
     clearInput();
+
     strcpy(p.gender, "Unknown");
     strcpy(p.bloodGroup, "N/A");
-    printf("Enter Phone (optional): ");
+
+    printf("Phone (optional): ");
     readLine(p.phone, MAX_PHONE);
-    printf("Enter Emergency Contact: ");
+    printf("Emergency contact: ");
     readLine(p.emergencyContact, MAX_NAME);
-    printf("Enter Critical Condition: ");
+    printf("What happened / condition: ");
     readLine(p.condition, MAX_CONDITION);
 
-    Room *er = findFreeRoomOfType("Emergency");
-    if (!er) er = findFreeRoomOfType("ICU");
-    if (er) {
-        er->occupied = 1;
-        er->patientId = p.id;
-        strcpy(er->status, "Occupied");
-        p.roomNumber = er->number;
-        printf("Assigned %s room %d (Tk. %.0f/day).\n", er->type, er->number, er->dailyRate);
+    /* try emergency room first, then ICU */
+    r = findFreeRoomOfType("Emergency");
+    if (r == NULL)
+        r = findFreeRoomOfType("ICU");
+
+    if (r != NULL) {
+        r->occupied = 1;
+        r->patientId = p.id;
+        strcpy(r->status, "Occupied");
+        p.roomNumber = r->number;
+        printf("Got room %d (%s)\n", r->number, r->type);
     } else {
-        printf("WARNING: No Emergency/ICU room free — admitted without room.\n");
+        printf("No free ER/ICU room right now.\n");
     }
 
-    int erDoc = -1;
-    for (int i = 0; i < doctorCount; i++) {
-        if (doctors[i].available &&
-            strcasecmp(doctors[i].specialization, "Emergency Medicine") == 0) {
-            erDoc = i;
+    for (i = 0; i < doctorCount; i++) {
+        if (doctors[i].available && strcasecmp(doctors[i].specialization, "Emergency Medicine") == 0) {
+            docIndex = i;
             break;
         }
     }
-    if (erDoc == -1) {
-        for (int i = 0; i < doctorCount; i++) {
-            if (doctors[i].available) { erDoc = i; break; }
+    if (docIndex == -1) {
+        for (i = 0; i < doctorCount; i++) {
+            if (doctors[i].available) {
+                docIndex = i;
+                break;
+            }
         }
     }
-    if (erDoc != -1) {
-        p.doctorId = doctors[erDoc].id;
-        doctors[erDoc].available = 0;
-        doctors[erDoc].patientsAssigned++;
-        p.doctorFee = doctors[erDoc].consultationFee;
-        printf("Assigned %s (ID %d).\n", doctors[erDoc].name, doctors[erDoc].id);
+
+    if (docIndex != -1) {
+        p.doctorId = doctors[docIndex].id;
+        doctors[docIndex].available = 0;
+        doctors[docIndex].patientsAssigned++;
+        p.doctorFee = doctors[docIndex].consultationFee;
+        printf("Doctor: %s\n", doctors[docIndex].name);
     }
 
     p.daysAdmitted = 1;
     p.isEmergency = 1;
     strcpy(p.status, "Emergency");
     todayDate(p.admitDate, MAX_DATE);
-    calcRunningTotal(&p);
+    updateTotal(&p);
+
     patients[patientCount++] = p;
-    printf("Emergency patient admitted. ID=%d\n", p.id);
+    printf("Emergency patient saved.\n");
 }
 
 void searchPatient(void) {
-    int mode;
-    printf("1. By ID  2. By Name\n");
-    if (!readInt("Choice: ", &mode)) return;
-    int pi = -1;
+    int mode, id, idx;
+    char name[MAX_NAME];
+
+    printf("Search by:\n");
+    printf("1. ID\n");
+    printf("2. Name\n");
+    if (!readInt("Choice: ", &mode))
+        return;
+
     if (mode == 1) {
-        int id;
-        if (!readInt("Patient ID: ", &id)) return;
-        pi = findPatientIndex(id);
+        if (!readInt("Patient id: ", &id))
+            return;
+        idx = findPatientIndex(id);
     } else if (mode == 2) {
-        char name[MAX_NAME];
-        printf("Patient Name: ");
+        printf("Name: ");
         readLine(name, MAX_NAME);
-        pi = findPatientByName(name);
+        idx = findPatientByName(name);
     } else {
-        printf("Invalid.\n");
+        printf("Wrong choice.\n");
         return;
     }
-    if (pi < 0) { printf("Patient not found.\n"); return; }
-    printPatient(&patients[pi]);
+
+    if (idx == -1) {
+        printf("No patient found.\n");
+        return;
+    }
+    showPatient(&patients[idx]);
 }
 
 void listPatients(void) {
-    int filter;
-    printf("1. All  2. Admitted  3. Discharged  4. Emergency only\n");
-    if (!readInt("Filter: ", &filter)) return;
-    printf("\n%-6s %-20s %-6s %-12s %-8s %-10s\n",
-           "ID", "Name", "Age", "Status", "Room", "Emergency");
-    printf("------------------------------------------------------------------\n");
-    int shown = 0;
-    for (int i = 0; i < patientCount; i++) {
-        Patient *p = &patients[i];
-        int show = 0;
-        if (filter == 1) show = 1;
-        else if (filter == 2 &&
-                 (strcmp(p->status, "Admitted") == 0 ||
-                  strcmp(p->status, "Emergency") == 0)) show = 1;
-        else if (filter == 3 && strcmp(p->status, "Discharged") == 0) show = 1;
-        else if (filter == 4 && p->isEmergency) show = 1;
-        if (!show) continue;
-        printf("%-6d %-20s %-6d %-12s %-8d %-10s\n",
-               p->id, p->name, p->age, p->status, p->roomNumber,
-               p->isEmergency ? "YES" : "No");
+    int filter, i, shown = 0;
+    Patient *p;
+
+    printf("1. All\n");
+    printf("2. Currently here (admitted/emergency)\n");
+    printf("3. Discharged\n");
+    printf("4. Emergency only\n");
+    if (!readInt("Show: ", &filter))
+        return;
+
+    printf("\nID    Name                 Age  Status       Room\n");
+    for (i = 0; i < patientCount; i++) {
+        p = &patients[i];
+        if (filter == 2) {
+            if (strcmp(p->status, "Admitted") != 0 && strcmp(p->status, "Emergency") != 0)
+                continue;
+        } else if (filter == 3) {
+            if (strcmp(p->status, "Discharged") != 0)
+                continue;
+        } else if (filter == 4) {
+            if (!p->isEmergency)
+                continue;
+        } else if (filter != 1) {
+            printf("Bad filter.\n");
+            return;
+        }
+
+        printf("%-5d %-20s %-4d %-12s %d\n", p->id, p->name, p->age, p->status, p->roomNumber);
         shown++;
     }
-    if (!shown) printf("No matching patients.\n");
+
+    if (shown == 0)
+        printf("(empty)\n");
 }
 
 void updatePatient(void) {
-    int id;
-    if (!readInt("Patient ID: ", &id)) return;
-    int pi = findPatientIndex(id);
-    if (pi < 0) { printf("Not found.\n"); return; }
-    if (strcmp(patients[pi].status, "Discharged") == 0) {
-        printf("Cannot update discharged patient.\n");
+    int id, idx, field;
+    Patient *p;
+
+    if (!readInt("Patient id: ", &id))
+        return;
+    idx = findPatientIndex(id);
+    if (idx == -1) {
+        printf("Not found.\n");
         return;
     }
-    Patient *p = &patients[pi];
-    int c;
-    printf("1.Name 2.Age 3.Condition 4.Phone 5.Days Admitted 6.Address\n");
-    if (!readInt("Field: ", &c)) return;
-    switch (c) {
-        case 1: printf("New name: "); readLine(p->name, MAX_NAME); break;
-        case 2:
-            if (!readInt("New age: ", &p->age) || p->age <= 0) {
-                printf("Invalid.\n"); return;
-            }
-            break;
-        case 3: printf("New condition: "); readLine(p->condition, MAX_CONDITION); break;
-        case 4: printf("New phone: "); readLine(p->phone, MAX_PHONE); break;
-        case 5:
-            if (!readInt("Days admitted: ", &p->daysAdmitted) || p->daysAdmitted < 0) {
-                printf("Invalid.\n"); return;
-            }
-            if (p->roomNumber > 0) {
-                int ri = findRoomIndex(p->roomNumber);
-                if (ri >= 0) {
-                    p->roomCharges = p->daysAdmitted * rooms[ri].dailyRate;
-                    calcRunningTotal(p);
-                }
-            }
-            break;
-        case 6: printf("New address: "); readLine(p->address, MAX_TEXT); break;
-        default: printf("Invalid.\n"); return;
+    p = &patients[idx];
+
+    if (strcmp(p->status, "Discharged") == 0) {
+        printf("Already discharged, can't edit.\n");
+        return;
     }
-    printf("Updated.\n");
+
+    printf("What do you want to change?\n");
+    printf("1 name\n");
+    printf("2 age\n");
+    printf("3 condition\n");
+    printf("4 phone\n");
+    printf("5 days admitted\n");
+    printf("6 address\n");
+    if (!readInt("> ", &field))
+        return;
+
+    if (field == 1) {
+        printf("New name: ");
+        readLine(p->name, MAX_NAME);
+    } else if (field == 2) {
+        if (!readInt("New age: ", &p->age) || p->age <= 0) {
+            printf("Invalid.\n");
+            return;
+        }
+    } else if (field == 3) {
+        printf("New condition: ");
+        readLine(p->condition, MAX_CONDITION);
+    } else if (field == 4) {
+        printf("New phone: ");
+        readLine(p->phone, MAX_PHONE);
+    } else if (field == 5) {
+        int days;
+        int ri;
+        if (!readInt("Days: ", &days) || days < 0) {
+            printf("Invalid.\n");
+            return;
+        }
+        p->daysAdmitted = days;
+        if (p->roomNumber > 0) {
+            ri = findRoomIndex(p->roomNumber);
+            if (ri != -1) {
+                p->roomCharges = p->daysAdmitted * rooms[ri].dailyRate;
+                updateTotal(p);
+            }
+        }
+    } else if (field == 6) {
+        printf("New address: ");
+        readLine(p->address, MAX_TEXT);
+    } else {
+        printf("Nope.\n");
+        return;
+    }
+
+    printf("Ok, updated.\n");
 }
 
 void transferRoom(void) {
-    int id;
-    if (!readInt("Patient ID: ", &id)) return;
-    int pi = findPatientIndex(id);
-    if (pi < 0) { printf("Not found.\n"); return; }
-    Patient *p = &patients[pi];
+    int id, idx, newRoom, oldRi, newRi;
+    Patient *p;
+
+    if (!readInt("Patient id: ", &id))
+        return;
+    idx = findPatientIndex(id);
+    if (idx == -1) {
+        printf("Not found.\n");
+        return;
+    }
+    p = &patients[idx];
     if (strcmp(p->status, "Discharged") == 0) {
-        printf("Patient discharged.\n");
+        printf("Discharged patient.\n");
         return;
     }
-    int newRoom;
-    if (!readInt("New room number: ", &newRoom)) return;
-    int nri = findRoomIndex(newRoom);
-    if (nri < 0) { printf("Room not found.\n"); return; }
-    if (rooms[nri].occupied || strcmp(rooms[nri].status, "Available") != 0) {
-        printf("Room not available.\n");
+
+    if (!readInt("Move to room number: ", &newRoom))
+        return;
+    newRi = findRoomIndex(newRoom);
+    if (newRi == -1) {
+        printf("That room doesn't exist.\n");
         return;
     }
+    if (rooms[newRi].occupied || strcmp(rooms[newRi].status, "Available") != 0) {
+        printf("Room not free.\n");
+        return;
+    }
+
+    /* free old room if any */
     if (p->roomNumber > 0) {
-        int ori = findRoomIndex(p->roomNumber);
-        if (ori >= 0) {
-            rooms[ori].occupied = 0;
-            rooms[ori].patientId = -1;
-            strcpy(rooms[ori].status, "Available");
-            p->roomCharges += p->daysAdmitted * rooms[ori].dailyRate;
+        oldRi = findRoomIndex(p->roomNumber);
+        if (oldRi != -1) {
+            p->roomCharges += p->daysAdmitted * rooms[oldRi].dailyRate;
+            rooms[oldRi].occupied = 0;
+            rooms[oldRi].patientId = -1;
+            strcpy(rooms[oldRi].status, "Available");
         }
     }
-    rooms[nri].occupied = 1;
-    rooms[nri].patientId = p->id;
-    strcpy(rooms[nri].status, "Occupied");
+
+    rooms[newRi].occupied = 1;
+    rooms[newRi].patientId = p->id;
+    strcpy(rooms[newRi].status, "Occupied");
     p->roomNumber = newRoom;
     p->daysAdmitted = 0;
-    calcRunningTotal(p);
-    printf("Transferred to room %d (%s, Tk. %.0f/day).\n",
-           newRoom, rooms[nri].type, rooms[nri].dailyRate);
+    updateTotal(p);
+
+    printf("Moved to room %d.\n", newRoom);
 }
 
 void patientMenu(void) {
-    int c;
+    int ch;
+
     while (1) {
-        printf("\n=== PATIENT MANAGEMENT ===\n");
-        printf("1. Register Patient\n");
-        printf("2. Emergency Admission\n");
-        printf("3. Search Patient\n");
-        printf("4. List Patients\n");
-        printf("5. Update Patient\n");
-        printf("6. Transfer Room\n");
+        printf("\n-- Patients --\n");
+        printf("1. Register\n");
+        printf("2. Emergency admit\n");
+        printf("3. Search\n");
+        printf("4. List\n");
+        printf("5. Update\n");
+        printf("6. Transfer room\n");
         printf("7. Back\n");
-        if (!readInt("Choice: ", &c)) continue;
-        switch (c) {
-            case 1: registerPatient(); break;
-            case 2: emergencyAdmit(); break;
-            case 3: searchPatient(); break;
-            case 4: listPatients(); break;
-            case 5: updatePatient(); break;
-            case 6: transferRoom(); break;
-            case 7: return;
-            default: printf("Invalid.\n");
-        }
+        if (!readInt("Choice: ", &ch))
+            continue;
+
+        if (ch == 1) registerPatient();
+        else if (ch == 2) emergencyAdmit();
+        else if (ch == 3) searchPatient();
+        else if (ch == 4) listPatients();
+        else if (ch == 5) updatePatient();
+        else if (ch == 6) transferRoom();
+        else if (ch == 7) return;
+        else printf("Invalid option.\n");
     }
 }

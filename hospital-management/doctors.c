@@ -1,25 +1,36 @@
 #include "hospital.h"
 
 void releaseDoctorFromPatient(int patientIndex) {
-    int did = patients[patientIndex].doctorId;
-    if (did < 0) return;
-    int di = findDoctorIndex(did);
-    if (di < 0) return;
-    if (doctors[di].patientsAssigned > 0) doctors[di].patientsAssigned--;
-    if (doctors[di].patientsAssigned < doctors[di].maxPatients) {
+    int did, di;
+
+    did = patients[patientIndex].doctorId;
+    if (did < 0)
+        return;
+
+    di = findDoctorIndex(did);
+    if (di < 0)
+        return;
+
+    if (doctors[di].patientsAssigned > 0)
+        doctors[di].patientsAssigned--;
+
+    /* free again if under max */
+    if (doctors[di].patientsAssigned < doctors[di].maxPatients)
         doctors[di].available = 1;
-    }
 }
 
 void addDoctor(void) {
+    Doctor d;
+
     if (doctorCount >= MAX_DOCTORS) {
-        printf("Doctor list full.\n");
+        printf("Can't add more doctors.\n");
         return;
     }
-    Doctor d;
+
     memset(&d, 0, sizeof(d));
     d.id = meta.nextDoctorId++;
-    printf("Auto Doctor ID: %d\n", d.id);
+    printf("Doctor id: %d\n", d.id);
+
     printf("Name: ");
     readLine(d.name, MAX_NAME);
     printf("Specialization: ");
@@ -28,159 +39,203 @@ void addDoctor(void) {
     readLine(d.department, MAX_DEPT);
     printf("Phone: ");
     readLine(d.phone, MAX_PHONE);
-    if (!readDouble("Consultation Fee: ", &d.consultationFee) || d.consultationFee < 0) {
-        printf("Invalid fee.\n");
+
+    if (!readDouble("Consultation fee: ", &d.consultationFee) || d.consultationFee < 0) {
+        printf("Bad fee.\n");
         return;
     }
-    if (!readInt("Max concurrent patients: ", &d.maxPatients) || d.maxPatients <= 0) {
+
+    if (!readInt("Max patients at once: ", &d.maxPatients) || d.maxPatients <= 0)
         d.maxPatients = 5;
-    }
-    if (!readInt("Years of experience: ", &d.yearsExperience) || d.yearsExperience < 0) {
+
+    if (!readInt("Years experience: ", &d.yearsExperience) || d.yearsExperience < 0)
         d.yearsExperience = 0;
-    }
+
     d.available = 1;
     d.patientsAssigned = 0;
     doctors[doctorCount++] = d;
-    printf("Doctor added.\n");
+    printf("Doctor saved.\n");
 }
 
 void searchDoctor(void) {
-    int mode;
-    printf("1. By ID  2. By Specialization (available only)  3. By Department\n");
-    if (!readInt("Choice: ", &mode)) return;
+    int mode, id, i, found;
+    char key[MAX_SPEC];
+    Doctor *d;
+
+    printf("1. By id\n");
+    printf("2. Available by specialization\n");
+    printf("3. By department\n");
+    if (!readInt("Choice: ", &mode))
+        return;
 
     if (mode == 1) {
-        int id;
-        if (!readInt("Doctor ID: ", &id)) return;
-        int di = findDoctorIndex(id);
-        if (di < 0) { printf("Not found.\n"); return; }
-        Doctor *d = &doctors[di];
-        printf("\nID %d | %s | %s | Dept: %s\n", d->id, d->name, d->specialization, d->department);
-        printf("Phone %s | Fee %.0f | Exp %d yrs | Assigned %d/%d | %s\n",
-               d->phone, d->consultationFee, d->yearsExperience,
-               d->patientsAssigned, d->maxPatients,
-               d->available ? "Available" : "Busy");
+        if (!readInt("Doctor id: ", &id))
+            return;
+        i = findDoctorIndex(id);
+        if (i < 0) {
+            printf("Not found.\n");
+            return;
+        }
+        d = &doctors[i];
+        printf("\n%d - %s\n", d->id, d->name);
+        printf("%s / %s\n", d->specialization, d->department);
+        printf("Fee: %.0f  Phone: %s\n", d->consultationFee, d->phone);
+        printf("Assigned: %d/%d  %s\n", d->patientsAssigned, d->maxPatients,
+               d->available ? "available" : "busy");
         return;
     }
 
-    char key[MAX_SPEC];
-    printf(mode == 2 ? "Specialization: " : "Department: ");
+    if (mode == 2)
+        printf("Specialization: ");
+    else if (mode == 3)
+        printf("Department: ");
+    else {
+        printf("Wrong choice.\n");
+        return;
+    }
     readLine(key, MAX_SPEC);
-    printf("\n%-6s %-20s %-16s %-10s %-10s\n", "ID", "Name", "Spec", "Fee", "Status");
-    int found = 0;
-    for (int i = 0; i < doctorCount; i++) {
-        Doctor *d = &doctors[i];
-        int match = 0;
+
+    found = 0;
+    printf("\nID   Name                 Spec             Fee\n");
+    for (i = 0; i < doctorCount; i++) {
+        d = &doctors[i];
         if (mode == 2) {
-            match = d->available && strcasecmp(d->specialization, key) == 0;
+            if (!d->available)
+                continue;
+            if (strcasecmp(d->specialization, key) != 0)
+                continue;
         } else {
-            match = strcasecmp(d->department, key) == 0;
+            if (strcasecmp(d->department, key) != 0)
+                continue;
         }
-        if (!match) continue;
-        printf("%-6d %-20s %-16s %-10.0f %-10s\n",
-               d->id, d->name, d->specialization, d->consultationFee,
-               d->available ? "Available" : "Busy");
+        printf("%-4d %-20s %-16s %.0f\n", d->id, d->name, d->specialization, d->consultationFee);
         found = 1;
     }
-    if (!found) printf("No matching doctors.\n");
+    if (!found)
+        printf("Nobody matched.\n");
 }
 
 void listDoctors(void) {
-    printf("\n%-6s %-20s %-16s %-14s %-8s %-8s\n",
-           "ID", "Name", "Specialization", "Department", "Fee", "Status");
-    printf("------------------------------------------------------------------------------\n");
-    for (int i = 0; i < doctorCount; i++) {
-        Doctor *d = &doctors[i];
-        printf("%-6d %-20s %-16s %-14s %-8.0f %-8s\n",
-               d->id, d->name, d->specialization, d->department,
-               d->consultationFee, d->available ? "Free" : "Busy");
+    int i;
+    printf("\nAll doctors:\n");
+    for (i = 0; i < doctorCount; i++) {
+        printf("%d. %s (%s) fee=%.0f [%s]\n",
+               doctors[i].id, doctors[i].name, doctors[i].specialization,
+               doctors[i].consultationFee,
+               doctors[i].available ? "free" : "busy");
     }
 }
 
 void updateDoctor(void) {
-    int id;
-    if (!readInt("Doctor ID: ", &id)) return;
-    int di = findDoctorIndex(id);
-    if (di < 0) { printf("Not found.\n"); return; }
-    Doctor *d = &doctors[di];
-    int c;
-    printf("1.Fee 2.Phone 3.Max patients 4.Toggle availability\n");
-    if (!readInt("Field: ", &c)) return;
-    switch (c) {
-        case 1:
-            if (!readDouble("New fee: ", &d->consultationFee) || d->consultationFee < 0) {
-                printf("Invalid.\n"); return;
-            }
-            break;
-        case 2: printf("New phone: "); readLine(d->phone, MAX_PHONE); break;
-        case 3:
-            if (!readInt("Max patients: ", &d->maxPatients) || d->maxPatients <= 0) {
-                printf("Invalid.\n"); return;
-            }
-            break;
-        case 4:
-            d->available = !d->available;
-            printf("Now: %s\n", d->available ? "Available" : "Unavailable");
-            break;
-        default: printf("Invalid.\n"); return;
+    int id, idx, field;
+    Doctor *d;
+
+    if (!readInt("Doctor id: ", &id))
+        return;
+    idx = findDoctorIndex(id);
+    if (idx < 0) {
+        printf("Not found.\n");
+        return;
     }
-    printf("Updated.\n");
+    d = &doctors[idx];
+
+    printf("1. Change fee\n");
+    printf("2. Change phone\n");
+    printf("3. Change max patients\n");
+    printf("4. Toggle available/busy\n");
+    if (!readInt("Field: ", &field))
+        return;
+
+    if (field == 1) {
+        if (!readDouble("New fee: ", &d->consultationFee) || d->consultationFee < 0) {
+            printf("Invalid.\n");
+            return;
+        }
+    } else if (field == 2) {
+        printf("Phone: ");
+        readLine(d->phone, MAX_PHONE);
+    } else if (field == 3) {
+        if (!readInt("Max patients: ", &d->maxPatients) || d->maxPatients <= 0) {
+            printf("Invalid.\n");
+            return;
+        }
+    } else if (field == 4) {
+        d->available = !d->available;
+        printf("Now %s\n", d->available ? "available" : "unavailable");
+    } else {
+        printf("Invalid.\n");
+        return;
+    }
+    printf("Done.\n");
 }
 
 void assignDoctor(void) {
-    int pid, did;
-    if (!readInt("Patient ID: ", &pid)) return;
-    if (!readInt("Doctor ID: ", &did)) return;
-    int pi = findPatientIndex(pid);
-    if (pi < 0) { printf("Patient not found.\n"); return; }
-    if (strcmp(patients[pi].status, "Discharged") == 0) {
-        printf("Patient discharged.\n");
+    int pid, did, pi, di;
+
+    if (!readInt("Patient id: ", &pid))
+        return;
+    if (!readInt("Doctor id: ", &did))
+        return;
+
+    pi = findPatientIndex(pid);
+    if (pi < 0) {
+        printf("Patient not found.\n");
         return;
     }
-    int di = findDoctorIndex(did);
-    if (di < 0) { printf("Doctor not found.\n"); return; }
+    if (strcmp(patients[pi].status, "Discharged") == 0) {
+        printf("That patient is discharged.\n");
+        return;
+    }
+
+    di = findDoctorIndex(did);
+    if (di < 0) {
+        printf("Doctor not found.\n");
+        return;
+    }
     if (!doctors[di].available) {
-        printf("Doctor unavailable.\n");
+        printf("Doctor is busy.\n");
         return;
     }
     if (doctors[di].patientsAssigned >= doctors[di].maxPatients) {
-        printf("Doctor at max patient load.\n");
+        printf("Doctor already has too many patients.\n");
         return;
     }
-    if (patients[pi].doctorId != -1) {
+
+    if (patients[pi].doctorId != -1)
         releaseDoctorFromPatient(pi);
-    }
+
     patients[pi].doctorId = did;
     patients[pi].doctorFee = doctors[di].consultationFee;
     doctors[di].patientsAssigned++;
-    if (doctors[di].patientsAssigned >= doctors[di].maxPatients) {
+    if (doctors[di].patientsAssigned >= doctors[di].maxPatients)
         doctors[di].available = 0;
-    }
+
     patients[pi].totalBill = patients[pi].roomCharges + patients[pi].doctorFee +
                              patients[pi].medicineCharges + patients[pi].labCharges -
                              patients[pi].discount;
-    printf("Assigned %s to %s.\n", doctors[di].name, patients[pi].name);
+
+    printf("%s is now assigned to %s.\n", doctors[di].name, patients[pi].name);
 }
 
 void doctorMenu(void) {
-    int c;
+    int ch;
     while (1) {
-        printf("\n=== DOCTOR MANAGEMENT ===\n");
-        printf("1. Add Doctor\n");
-        printf("2. Search Doctor\n");
-        printf("3. List Doctors\n");
-        printf("4. Update Doctor\n");
-        printf("5. Assign Doctor to Patient\n");
+        printf("\n-- Doctors --\n");
+        printf("1. Add doctor\n");
+        printf("2. Search\n");
+        printf("3. List all\n");
+        printf("4. Update\n");
+        printf("5. Assign to patient\n");
         printf("6. Back\n");
-        if (!readInt("Choice: ", &c)) continue;
-        switch (c) {
-            case 1: addDoctor(); break;
-            case 2: searchDoctor(); break;
-            case 3: listDoctors(); break;
-            case 4: updateDoctor(); break;
-            case 5: assignDoctor(); break;
-            case 6: return;
-            default: printf("Invalid.\n");
-        }
+        if (!readInt("Choice: ", &ch))
+            continue;
+
+        if (ch == 1) addDoctor();
+        else if (ch == 2) searchDoctor();
+        else if (ch == 3) listDoctors();
+        else if (ch == 4) updateDoctor();
+        else if (ch == 5) assignDoctor();
+        else if (ch == 6) return;
+        else printf("Invalid.\n");
     }
 }
