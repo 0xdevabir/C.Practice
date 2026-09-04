@@ -1,55 +1,61 @@
 #include "hospital.h"
 
 void hospitalSummary(void) {
+    int i;
     int admitted = 0, discharged = 0, emergency = 0;
     int availDoc = 0, busyDoc = 0;
     int freeRoom = 0, usedRoom = 0, maint = 0;
     double revenue = 0;
 
-    for (int i = 0; i < patientCount; i++) {
+    for (i = 0; i < patientCount; i++) {
         if (strcmp(patients[i].status, "Discharged") == 0) {
             discharged++;
             revenue += patients[i].totalBill;
-        } else if (strcmp(patients[i].status, "Emergency") == 0) {
-            emergency++;
-            admitted++;
         } else {
             admitted++;
+            if (patients[i].isEmergency || strcmp(patients[i].status, "Emergency") == 0)
+                emergency++;
         }
     }
-    for (int i = 0; i < doctorCount; i++) {
-        if (doctors[i].available) availDoc++;
-        else busyDoc++;
-    }
-    for (int i = 0; i < roomCount; i++) {
-        if (strcmp(rooms[i].status, "Maintenance") == 0) maint++;
-        else if (rooms[i].occupied) usedRoom++;
-        else freeRoom++;
+
+    for (i = 0; i < doctorCount; i++) {
+        if (doctors[i].available)
+            availDoc++;
+        else
+            busyDoc++;
     }
 
-    printf("\n========================================\n");
-    printf("HOSPITAL SUMMARY\n");
-    printf("========================================\n");
-    printf("Total Patients        : %d\n", patientCount);
-    printf("Currently Admitted    : %d\n", admitted);
-    printf("  (Emergency cases)   : %d\n", emergency);
-    printf("Discharged            : %d\n", discharged);
-    printf("Doctors Available     : %d\n", availDoc);
-    printf("Doctors Busy          : %d\n", busyDoc);
-    printf("Rooms Free            : %d\n", freeRoom);
-    printf("Rooms Occupied        : %d\n", usedRoom);
-    printf("Rooms Maintenance     : %d\n", maint);
-    printf("Appointments          : %d\n", apptCount);
-    printf("Medicine SKUs         : %d\n", medCount);
-    printf("Lab Orders            : %d\n", labOrderCount);
-    printf("Total Revenue         : Tk. %.2f\n", revenue);
-    printf("========================================\n");
+    for (i = 0; i < roomCount; i++) {
+        if (strcmp(rooms[i].status, "Maintenance") == 0)
+            maint++;
+        else if (rooms[i].occupied)
+            usedRoom++;
+        else
+            freeRoom++;
+    }
+
+    printf("\n--- Hospital summary ---\n");
+    printf("Patients total     : %d\n", patientCount);
+    printf("Still admitted     : %d\n", admitted);
+    printf("Emergency cases    : %d\n", emergency);
+    printf("Discharged         : %d\n", discharged);
+    printf("Doctors free/busy  : %d / %d\n", availDoc, busyDoc);
+    printf("Rooms free/used    : %d / %d\n", freeRoom, usedRoom);
+    printf("Rooms maintenance  : %d\n", maint);
+    printf("Appointments       : %d\n", apptCount);
+    printf("Medicines in list  : %d\n", medCount);
+    printf("Lab orders         : %d\n", labOrderCount);
+    printf("Revenue (discharged): %.2f Tk\n", revenue);
+    printf("------------------------\n");
 }
 
 void revenueReport(void) {
+    int i;
     double room = 0, doc = 0, med = 0, lab = 0, disc = 0, total = 0;
-    for (int i = 0; i < patientCount; i++) {
-        if (strcmp(patients[i].status, "Discharged") != 0) continue;
+
+    for (i = 0; i < patientCount; i++) {
+        if (strcmp(patients[i].status, "Discharged") != 0)
+            continue;
         room += patients[i].roomCharges;
         doc += patients[i].doctorFee;
         med += patients[i].medicineCharges;
@@ -57,71 +63,83 @@ void revenueReport(void) {
         disc += patients[i].discount;
         total += patients[i].totalBill;
     }
-    printf("\n=== REVENUE BY CATEGORY (Discharged) ===\n");
-    printf("Room Charges : Tk. %.2f\n", room);
-    printf("Doctor Fees  : Tk. %.2f\n", doc);
-    printf("Pharmacy     : Tk. %.2f\n", med);
-    printf("Laboratory   : Tk. %.2f\n", lab);
-    printf("Discounts    : Tk. %.2f\n", disc);
-    printf("NET REVENUE  : Tk. %.2f\n", total);
+
+    printf("\nRevenue from discharged patients:\n");
+    printf("Rooms     %.2f\n", room);
+    printf("Doctors   %.2f\n", doc);
+    printf("Pharmacy  %.2f\n", med);
+    printf("Lab       %.2f\n", lab);
+    printf("Discounts -%.2f\n", disc);
+    printf("Net       %.2f Tk\n", total);
 }
 
 void occupancyReport(void) {
+    int i;
     int gen = 0, priv = 0, icu = 0, er = 0;
     int genU = 0, privU = 0, icuU = 0, erU = 0;
-    for (int i = 0; i < roomCount; i++) {
+    int used;
+
+    for (i = 0; i < roomCount; i++) {
         if (strcasecmp(rooms[i].type, "General") == 0) {
-            gen++; if (rooms[i].occupied) genU++;
+            gen++;
+            if (rooms[i].occupied) genU++;
         } else if (strcasecmp(rooms[i].type, "Private") == 0) {
-            priv++; if (rooms[i].occupied) privU++;
+            priv++;
+            if (rooms[i].occupied) privU++;
         } else if (strcasecmp(rooms[i].type, "ICU") == 0) {
-            icu++; if (rooms[i].occupied) icuU++;
+            icu++;
+            if (rooms[i].occupied) icuU++;
         } else if (strcasecmp(rooms[i].type, "Emergency") == 0) {
-            er++; if (rooms[i].occupied) erU++;
+            er++;
+            if (rooms[i].occupied) erU++;
         }
     }
-    printf("\n=== ROOM OCCUPANCY ===\n");
-    printf("General   : %d / %d\n", genU, gen);
-    printf("Private   : %d / %d\n", privU, priv);
-    printf("ICU       : %d / %d\n", icuU, icu);
-    printf("Emergency : %d / %d\n", erU, er);
+
+    printf("\nOccupancy:\n");
+    printf("General   %d/%d\n", genU, gen);
+    printf("Private   %d/%d\n", privU, priv);
+    printf("ICU       %d/%d\n", icuU, icu);
+    printf("Emergency %d/%d\n", erU, er);
     if (roomCount > 0) {
-        int used = genU + privU + icuU + erU;
-        printf("Overall   : %.1f%%\n", 100.0 * used / roomCount);
+        used = genU + privU + icuU + erU;
+        printf("Overall   %.1f%%\n", 100.0 * used / roomCount);
     }
 }
 
 void emergencyReport(void) {
-    printf("\n=== ACTIVE EMERGENCY CASES ===\n");
-    int found = 0;
-    for (int i = 0; i < patientCount; i++) {
-        if (!patients[i].isEmergency) continue;
-        if (strcmp(patients[i].status, "Discharged") == 0) continue;
-        printf("ID %d | %s | Room %d | Doctor %d | %s | Admitted %s\n",
+    int i, found = 0;
+
+    printf("\nActive emergency patients:\n");
+    for (i = 0; i < patientCount; i++) {
+        if (!patients[i].isEmergency)
+            continue;
+        if (strcmp(patients[i].status, "Discharged") == 0)
+            continue;
+        printf("%d %s room=%d doctor=%d | %s | since %s\n",
                patients[i].id, patients[i].name, patients[i].roomNumber,
                patients[i].doctorId, patients[i].condition, patients[i].admitDate);
         found = 1;
     }
-    if (!found) printf("No active emergencies.\n");
+    if (!found)
+        printf("None right now.\n");
 }
 
 void reportsMenu(void) {
-    int c;
+    int ch;
     while (1) {
-        printf("\n=== REPORTS ===\n");
-        printf("1. Hospital Summary\n");
-        printf("2. Revenue Report\n");
-        printf("3. Occupancy Report\n");
-        printf("4. Emergency Report\n");
+        printf("\n-- Reports --\n");
+        printf("1. Summary\n");
+        printf("2. Revenue\n");
+        printf("3. Occupancy\n");
+        printf("4. Emergencies\n");
         printf("5. Back\n");
-        if (!readInt("Choice: ", &c)) continue;
-        switch (c) {
-            case 1: hospitalSummary(); break;
-            case 2: revenueReport(); break;
-            case 3: occupancyReport(); break;
-            case 4: emergencyReport(); break;
-            case 5: return;
-            default: printf("Invalid.\n");
-        }
+        if (!readInt("Choice: ", &ch))
+            continue;
+        if (ch == 1) hospitalSummary();
+        else if (ch == 2) revenueReport();
+        else if (ch == 3) occupancyReport();
+        else if (ch == 4) emergencyReport();
+        else if (ch == 5) return;
+        else printf("Invalid.\n");
     }
 }

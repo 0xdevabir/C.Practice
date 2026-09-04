@@ -1,22 +1,16 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -O2
-SRCS = main.c utils.c storage.c patients.c doctors.c rooms.c \
-       appointments.c pharmacy.c lab.c billing.c reports.c
-OBJS = $(SRCS:.c=.o)
-TARGET = hospital
+# simple makefile for the hospital project
+CC=gcc
+CFLAGS=-Wall -std=c11
+OBJS=main.o utils.o storage.o patients.o doctors.o rooms.o appointments.o pharmacy.o lab.o billing.o reports.o
 
-.PHONY: all clean run
-
-all: $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+hospital: $(OBJS)
+	$(CC) $(CFLAGS) -o hospital $(OBJS)
 
 %.o: %.c hospital.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-run: $(TARGET)
-	./$(TARGET)
+	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f *.o hospital
+
+run: hospital
+	./hospital
