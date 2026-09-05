@@ -1,16 +1,12 @@
-# simple makefile for the hospital project
+# simple makefile for the hospital project (single-file build)
 CC=gcc
 CFLAGS=-Wall -std=c11
-OBJS=main.o utils.o storage.o patients.o doctors.o rooms.o appointments.o pharmacy.o lab.o billing.o reports.o
 
-hospital: $(OBJS)
-	$(CC) $(CFLAGS) -o hospital $(OBJS)
-
-%.o: %.c hospital.h
-	$(CC) $(CFLAGS) -c $<
+hospital: hospital.c
+	$(CC) $(CFLAGS) -o hospital hospital.c
 
 clean:
-	rm -f *.o hospital
+	rm -f hospital
 
 run: hospital
 	./hospital
